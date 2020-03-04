@@ -41,21 +41,31 @@ let createCell = function(state, position, column, row)
 		row: row,
 		column: column,
 		id: itterator.next().value,
-		draw: function()
+		draw: function(what)
 			{
-			if(cell.state == 1)
+			if(what)
 				{
-				ctx.fillStyle  = "#000000";
-			}
-			if(cell.state == 0)
+				if(what == 1)
+					{
+					ctx.fillStyle  = "#000000";
+				}
+				else{
+					ctx.fillStyle  = "#ffffff";
+				}
+			}	
+			else
 				{
-				ctx.fillStyle  = "#ffffff";
+				if(cell.state == 1)
+					{
+					ctx.fillStyle  = "#000000";
+				}
+				else
+					{
+					ctx.fillStyle  = "#ffffff";
+				}
 			}
 			ctx.fillRect(cell.x, cell.y, cellScale-1, cellScale-1);
-			
 			ctx.stroke();
-			
-
 		},
 		updateFriends:function()
 			{
@@ -100,7 +110,7 @@ let board = function(height, width)
 					{
 					cell.state=0;
 					cell.neighbors.forEach(x=>x[0] = 0);
-					cell.draw();
+					cell.draw(0);
 				});
 			});
 		},
@@ -119,7 +129,7 @@ let board = function(height, width)
 			glider.forEach((x)=>
 				{
 				x.state = 1;
-				x.draw();
+				x.draw(1);
 			});
 
 		},
@@ -130,7 +140,7 @@ let board = function(height, width)
 				cellArray.forEach((cell) => 
 					{
 					cell.state = cell.nextGeneration();
-					cell.draw();
+					cell.draw(cell.state);
 				});
 			});
 			//now we get the next values after we created a new state
