@@ -106,8 +106,8 @@ let board = function(height, width)
 		},
 		createGlider:function()
 			{
-			let randCol = Math.floor(Math.min(Math.random()*100, b.gameMatrix.length-1));	
-			let randRow = Math.floor(Math.min(Math.random()*100, b.gameMatrix[randCol].length-1));	
+			let randCol = Math.floor(Math.min(Math.random()*b.gameMatrix.length, b.gameMatrix.length-1));	
+			let randRow = Math.floor(Math.min(Math.random()*b.gameMatrix[randCol].length, b.gameMatrix[randCol].length-1));	
 
 			let glider = [
 				b.gameMatrix[randCol][randRow],
