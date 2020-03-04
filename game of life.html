@@ -1,0 +1,236 @@
+//conways game of life
+
+
+//rules 1 
+//rule 2
+//rule 3
+//rule 4
+<body id="body">
+<canvas width="320" height="240" id="canvas" class="canvas"></canvas>
+
+<script>
+const canvas = document.querySelector('canvas');
+
+const ctx = canvas.getContext('2d');
+function* itteration()
+	{
+	let itter = 0;
+	yield itter;	
+	while (true)
+		{
+		itter++;
+		yield itter;
+	}
+}
+let itterator = itteration();
+let createCell = function(state, position, column, row)
+	{
+	let rState = 0	
+	if(state > 0.5)
+		{
+		rState = 1;	
+	}	
+	let cell = 
+		{	
+		state: rState,
+		neighbors: [],
+		x: position.x,
+		y: position.y,
+		row: row,
+		column: column,
+		id: itterator.next().value,
+		draw: function()
+			{
+			window.setTimeout(function(){
+			if(cell.state == 1)
+				{
+				ctx.fillStyle  = "#000000";
+			}
+			if(cell.state == 0)
+				{
+				ctx.fillStyle  = "#ffffff";
+			}
+			ctx.fillRect(cell.x,cell.y, 5, 5);
+			
+			ctx.stroke();
+			},20);	
+			
+
+		},
+		drawNew:function(whatToDraw)
+			{
+			window.setTimeout(function(){	
+			if(whatToDraw ==1)
+				{
+				ctx.fillStyle  = "#000000";
+			}
+			else
+				{
+				ctx.fillStyle  = "#ffffff";
+			}
+			ctx.fillRect(cell.x,cell.y, 5, 5);
+			
+			ctx.stroke();
+			},20);	
+		},
+		updateFriends:function()
+			{
+				
+			this.neighbors.forEach((container)=> 
+				{
+				container[0] = container[1].state;
+				container[1] = container[1];
+			});	
+		}
+	}
+return cell;
+}
+let board = function(height, width)
+	{
+	let b = 
+		{	
+		gameMatrix: [],
+		wipe:function()
+			{
+			ctx.fillStyle  = "#ffffff";
+			ctx.fillRect(0,0, height*10, width*10);
+
+		}	
+	}
+
+	for(let i = 0; i < width; i++)
+		{
+		let gameArray = [];	
+		for(let j= 0; j < height; j++)
+			{	
+			let position = {x:i*10,y:j*10};
+			let gameCell = createCell(Math.random(0,1), position,i,j);
+			gameCell.draw();
+			gameArray.push(gameCell);
+		}
+		b.gameMatrix.push(gameArray);	
+	}
+	b.gameMatrix.forEach((cellArray)=>
+		{
+		cellArray.forEach((cell)=>
+			{	
+			let adjacent = [];	
+			if(cell.column > 0)
+				{
+				adjacent.push(b.gameMatrix[cell.column-1].filter(c=>c.row == cell.row-1 ||c.row ==cell.row || c.row == cell.row+1));
+			}
+			let nextIndexColumn = cell.column+1;
+			let nextColumn = b.gameMatrix[nextIndexColumn];
+			if(nextColumn)
+				{
+				adjacent.push(nextColumn.filter(c=>c.row == cell.row ||c.row ==cell.row+1 || c.row==cell.row-1));
+			}
+			let downNeighbor = cellArray[cell.row+1];
+			let upNeigbor = cellArray[cell.row-1];
+			if(upNeigbor)
+				{
+				adjacent.push(upNeigbor);
+			}
+			if(downNeighbor)
+				{
+				adjacent.push(downNeighbor);
+			}
+			adjacent = Flat(adjacent);
+			let neightbors = adjacent.map((x)=> { 
+
+				let lastState = x.state;
+				let container = [lastState	, x];
+				return container;
+
+			});
+			neightbors.forEach(neightbor=> cell.neighbors.push(neightbor));
+		});
+	})
+	return b;
+}
+function Flat(array)
+	{
+	let holdBucket = [];
+	let flatten = function(array)
+		{
+		for(let i = 0; i<array.length;i++)
+			{
+			if(Array.isArray(array[i]))
+				{
+				flatten(array[i]);
+			}
+			else
+				{
+				holdBucket.push(array[i]);
+			}
+		}
+	}
+	let flatttenedArray = [];
+	flatten(array, flatttenedArray);
+	return holdBucket;
+
+}
+let gameBoard = board(40,40);
+function total(array)
+	{
+	if(array == undefined)
+		{
+		console.trace(array);	
+		}
+	let y = 0;
+	for(let i=0;i<array.length;i++)
+		{
+		if(array[i] != NaN || array[i] != undefined)
+			{
+			y += array[i];
+		}
+	}	
+	return y;
+}
+let nextGeneration = function(cell)
+	{
+	let value = total(cell.neighbors.map(x=> x[0] ));	
+	if(cell.state == 1)
+		{
+		if(value > 3 || value <= 1) 
+			{
+			cell.state = 0;
+		}
+	}
+	else if(cell.state == 0 && value > 2)
+		{
+		cell.state = 1;
+	}
+	return cell.state;
+}
+let button = document.createElement("button");
+button.innerHTML = "click me";
+const on = false;
+button.addEventListener('click', function()
+	{
+	gameBoard.wipe();	
+	gameBoard.gameMatrix.forEach((cellArray)=>
+		{
+		cellArray.forEach((cell) => 
+			{
+			cell.state = nextGeneration(cell);
+			cell.drawNew(cell.state);
+		});
+	});
+	gameBoard.gameMatrix.forEach((cellArray)=>
+		{
+		cellArray.forEach(cell=>
+			{
+			cell.updateFriends();
+		})
+	})
+//	gameBoard.gameMatrix.forEach(cellArray=> cellArray.forEach(cell => (cell.draw())));
+//	gameBoard.gameMatrix.forEach(cellArray=> cellArray.forEach(cell => (cell.updateFriends())));
+
+				
+		
+	
+});
+const body = document.getElementById("body");
+body.appendChild(button);
+</script></body>
