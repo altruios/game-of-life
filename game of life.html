@@ -10,7 +10,7 @@
 
 <script>
 const canvas = document.querySelector('canvas');
-const cellScale = 5;
+const cellScale = 3;
 const ctx = canvas.getContext('2d');
 canvas.width = 1920;
 canvas.height = 1080;
@@ -51,7 +51,7 @@ let createCell = function(state, position, column, row)
 				{
 				ctx.fillStyle  = "#ffffff";
 			}
-			ctx.fillRect(cell.x, cell.y, cellScale-2, cellScale-2);
+			ctx.fillRect(cell.x, cell.y, cellScale-1, cellScale-1);
 			
 			ctx.stroke();
 			
@@ -63,9 +63,27 @@ let createCell = function(state, position, column, row)
 				{
 				container[0] = container[1].state;
 			});	
+		},
+		nextGeneration: function()
+			{
+			let value = total(cell.neighbors.map(x=> x[0])); //the value is the last snapshot of the neighbor grid	
+			let rState = 0; 
+			if(cell.state == 1) //alive rules
+				{
+				rState = 1;	//staying alive
+				if(value > 3 || value <= 1)//unless overcrowded, or under-fed 
+					{
+					rState = 0;
+				}
+			}
+			else if(value >= 3) //dead rules
+				{
+				rState = 1; //be alive only if 3 or more neighbors are alive
+			}
+			return rState;
 		}
 	}
-return cell;
+	return cell;
 }
 let board = function(height, width)
 	{
@@ -76,7 +94,7 @@ let board = function(height, width)
 			{
 			ctx.fillStyle  = "#ffffff";
 			ctx.fillRect(0,0, height*cellScale, width*cellScale);
-			this.gameMatrix.forEach((cellArray)=>
+			b.gameMatrix.forEach((cellArray)=>
 				{
 				cellArray.forEach((cell)=> 
 					{
@@ -88,26 +106,36 @@ let board = function(height, width)
 		},
 		createGlider:function()
 			{
-			let targetcoloumn = Math.floor(b.gameMatrix.length/2);
-			let targetRow = Math.floor(b.gameMatrix[targetcoloumn].length/2);
+			let randCol = Math.floor(Math.min(Math.random()*100, b.gameMatrix.length-1));	
+			let randRow = Math.floor(Math.min(Math.random()*100, b.gameMatrix[randCol].length-1));	
+
 			let glider = [
-				b.gameMatrix[targetcoloumn][targetRow],
-				b.gameMatrix[targetcoloumn+1][targetRow],
-				b.gameMatrix[targetcoloumn-1][targetRow],
-				b.gameMatrix[targetcoloumn+1][targetRow+1],
-				b.gameMatrix[targetcoloumn][targetRow+2]
+				b.gameMatrix[randCol][randRow],
+				b.gameMatrix[randCol+1][randRow],
+				b.gameMatrix[randCol-1][randRow],
+				b.gameMatrix[randCol+1][randRow-1],
+				b.gameMatrix[randCol][randRow-2]
 			]
 			glider.forEach((x)=>
 				{
 				x.state = 1;
 				x.draw();
 			});
-			glider.forEach((x)=> 
+
+		},
+		stepForward:function()
+			{
+			b.gameMatrix.forEach((cellArray)=>
 				{
-				x.updateFriends();
-				x.neighbors.forEach(container=> container[1].updateFriends());
+				cellArray.forEach((cell) => 
+					{
+					cell.state = cell.nextGeneration();
+					cell.draw();
+				});
 			});
-		}		
+			//now we get the next values after we created a new state
+			b.gameMatrix.forEach(cellArray=>cellArray.forEach(cell=>cell.updateFriends()));
+		}	
 	}
 
 	for(let i = 0; i < width; i++)
@@ -182,7 +210,7 @@ function Flat(array)
 	return holdBucket;
 
 }
-let gameBoard = board(250,250);
+let gameBoard = board(350,350);
 function total(array)
 	{
 	if(array == undefined)
@@ -196,31 +224,14 @@ function total(array)
 			{
 			y += array[i];
 		}
+		else
+			{
+			console.error("not a number");
+		}
 	}	
 	return y;
 }
-let nextGeneration = function(cell)
-	{
-	let value = total(cell.neighbors.map(x=> x[0]));	
-	let rState = 1;
-	if(cell.state == 1)
-		{
-		if(value > 3 || value <= 1) 
-			{
-			rState = 0;
-		}
-	}
-	else if(value >= 3)
-		{
-		rState = 1;
-	}
-	else
-		{
-		rState = 0;
-
-	}
-	return rState;
-}
+ 
 
 const turnOn = document.createElement("button");
 turnOn.innerHTML = "click me to start";
@@ -230,21 +241,12 @@ turnOn.addEventListener('click', function()
 	on = true;	
 	const engine = window.setInterval(function()
 		{
-		gameBoard.gameMatrix.forEach((cellArray)=>
-			{
-			cellArray.forEach((cell) => 
-				{
-				cell.state = nextGeneration(cell);
-				cell.draw();
-			});
-		});	
-		gameBoard.gameMatrix.forEach(cellArray=>cellArray.forEach(cell=>cell.updateFriends()));
-				
+		gameBoard.stepForward();
 		if(!on)
 			{
 			window.clearInterval(engine);
 		}
-	},210);	
+	},10);	
 });
 const turnOff =  document.createElement("button");
 turnOff.innerHTML = "click me to pause";
@@ -253,7 +255,12 @@ turnOff.addEventListener('click', function()
 	on = false;
 });
 
-
+const stepbutton = document.createElement('button');
+	stepbutton.innerHTML = "click me to step forward";
+	stepbutton.addEventListener('click', function()
+		{
+		gameBoard.stepForward();
+	});
 
 const wipeButton = document.createElement('button');
 	wipeButton.innerHTML = "click me to wipe the board";
@@ -266,11 +273,13 @@ const createGliderButton = document.createElement('button');
 	createGliderButton.addEventListener('click', function()
 		{
 		gameBoard.createGlider();
+		gameBoard.gameMatrix.forEach(cellArray=>cellArray.forEach(cell=>cell.updateFriends()));
+
 	});
 const body = document.getElementById("body");
 body.appendChild(turnOn);
 body.appendChild(turnOff);
-
+body.appendChild(stepbutton);
 body.appendChild(wipeButton);
 
 body.appendChild(createGliderButton)
