@@ -108,7 +108,12 @@ let createCell = function(state, position, column, row, cancerRate)
 				if((cancerCheck == 2 && cancerCheck == value))
 					{	
 					let friendContainer = cell.neighbors.find(container=>container[2] == 1);
-						friendContainer[2] = 0;
+					//	friendContainer[2] = 0;
+					let friendCancer = total(friendContainer[1].neighbors.map(x=> x[0]));
+					if(friendCancer > 2)
+						{
+						changeToGameOfCancer = true;	
+					}
 				}	
 				rState = 1;	//staying alive
 				if(value > 3 || value <= 1)//unless overcrowded, or under-fed 
@@ -120,14 +125,15 @@ let createCell = function(state, position, column, row, cancerRate)
 				{	
 				if(value == 3)
 					{
+					if(cancerCheck==3){changeToGameOfCancer= true}	
 					rState = 1; //be alive only if 3 or more neighbors are alive
 
 				}
-				if(cancerCheck > 1 && value < 4)
+				if(cancerCheck > 1 && value < 3)
 						{
 						let friendContainer = cell.neighbors.find(container=>container[2] == 1);	
 						let friendCancer = 	total(friendContainer[1].neighbors.map(x=>x[2]));	
-						if(friendCancer > 2)
+						if(friendCancer-1 > value)
 							{
 							changeToGameOfCancer = true;
 						}
@@ -147,14 +153,11 @@ let createCell = function(state, position, column, row, cancerRate)
 			let rCancerState = 0;
 			let stillCancer = true;
 			let cancerCheck = total(cell.neighbors.map(x=>x[2]));
-			if(value < 1 ||  cancerCheck == value || cancerCheck > 6 || (cancerCheck == 2 && cancerCheck==value))
+			if(value == 8 ||  cancerCheck == value || (value == 0))
 				{
 				stillCancer = false;
 			}
-			else if( value == 1)
-				{
-				stillCancer = true;
-			}
+		
 			if(stillCancer)
 				{
 				rCancerState = 1;
