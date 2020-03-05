@@ -10,7 +10,7 @@
 
 <script>
 const canvas = document.querySelector('canvas');
-const cellScale = 3;
+const cellScale = 4;
 const ctx = canvas.getContext('2d');
 canvas.width = 1920;
 canvas.height = 1080;
@@ -25,12 +25,17 @@ function* itteration()
 	}
 }
 let itterator = itteration();
-let createCell = function(state, position, column, row)
+let createCell = function(state, position, column, row, cancerRate)
 	{
 	let rState = 0	
 	if(state > 0.96)
 		{
 		rState = 1;	
+	}
+	let rCaner = 0;
+	if(cancerRate > 0.7704)
+		{
+		rCaner = 1;
 	}	
 	let cell = 
 		{	
@@ -40,6 +45,7 @@ let createCell = function(state, position, column, row)
 		y: position.y,
 		row: row,
 		column: column,
+		cancer:rCaner,
 		id: itterator.next().value,
 		draw: function(what)
 			{
@@ -48,9 +54,17 @@ let createCell = function(state, position, column, row)
 				if(what == 1)
 					{
 					ctx.fillStyle  = "#000000";
+					if(cell.cancer)
+						{
+						ctx.fillStyle = "#ff00f0";
+					}
 				}
 				else{
 					ctx.fillStyle  = "#ffffff";
+						if(cell.cancer)
+						{
+						ctx.fillStyle = "#ff00f0";
+					}
 				}
 			}	
 			else
@@ -58,10 +72,18 @@ let createCell = function(state, position, column, row)
 				if(cell.state == 1)
 					{
 					ctx.fillStyle  = "#000000";
+					if(cell.cancer)
+						{
+						ctx.fillStyle = "#ff00f0";
+					}
 				}
 				else
 					{
 					ctx.fillStyle  = "#ffffff";
+						if(cell.cancer)
+						{
+						ctx.fillStyle = "#ff00f0";
+					}
 				}
 			}
 			ctx.fillRect(cell.x, cell.y, cellScale-1, cellScale-1);
@@ -72,25 +94,90 @@ let createCell = function(state, position, column, row)
 			this.neighbors.forEach((container)=> 
 				{
 				container[0] = container[1].state;
+				container[2] = container[1].cancer;
 			});	
 		},
-		nextGeneration: function()
+		gameOfLife: function(cancerR)
 			{
+			let changeToGameOfCancer = false;	
 			let value = total(cell.neighbors.map(x=> x[0])); //the value is the last snapshot of the neighbor grid	
 			let rState = 0; 
+			let cancerCheck = total(cell.neighbors.map(x=>x[2]));
 			if(cell.state == 1) //alive rules
 				{
+				if((cancerCheck == 2 && cancerCheck == value))
+					{	
+					let friendContainer = cell.neighbors.find(container=>container[2] == 1);
+						friendContainer[2] = 0;
+				}	
 				rState = 1;	//staying alive
 				if(value > 3 || value <= 1)//unless overcrowded, or under-fed 
 					{
 					rState = 0;
 				}
 			}
-			else if(value >= 3) //dead rules
+			else 
+				{	
+				if(value == 3)
+					{
+					rState = 1; //be alive only if 3 or more neighbors are alive
+
+				}
+				if(cancerCheck > 1 && value < 4)
+						{
+						let friendContainer = cell.neighbors.find(container=>container[2] == 1);	
+						let friendCancer = 	total(friendContainer[1].neighbors.map(x=>x[2]));	
+						if(friendCancer > 2)
+							{
+							changeToGameOfCancer = true;
+						}
+
+					}
+		}
+		
+			if(changeToGameOfCancer)
 				{
-				rState = 1; //be alive only if 3 or more neighbors are alive
+				cell.cancer = 1;
 			}
 			return rState;
+		},
+		gameOfCancer: function()
+			{
+			let value = total(cell.neighbors.map(x=> x[0])); //the value is the last snapshot of the neighbor grid		
+			let rCancerState = 0;
+			let stillCancer = true;
+			let cancerCheck = total(cell.neighbors.map(x=>x[2]));
+			if(value < 1 ||  cancerCheck == value || cancerCheck > 6 || (cancerCheck == 2 && cancerCheck==value))
+				{
+				stillCancer = false;
+			}
+			else if( value == 1)
+				{
+				stillCancer = true;
+			}
+			if(stillCancer)
+				{
+				rCancerState = 1;
+				cell.cancer = 1;
+			}
+			else
+				{
+				cell.cancer = 0;
+			}
+			return rCancerState
+
+		
+		},
+		setSeededCancer:function(seed)
+			{
+			if(cell.state ==1 )
+				{	
+				if(seed>Math.random())
+					{
+					cell.cancer = 1;
+					cell.draw();
+				}
+			}
 		}
 	}
 	return cell;
@@ -100,6 +187,7 @@ let board = function(height, width)
 	let b = 
 		{	
 		gameMatrix: [],
+		cancerRate:0,
 		wipe:function()
 			{
 			ctx.fillStyle  = "#ffffff";
@@ -139,13 +227,51 @@ let board = function(height, width)
 				{
 				cellArray.forEach((cell) => 
 					{
-					cell.state = cell.nextGeneration();
+					if(!cell.cancer)
+						{	
+						cell.state = cell.gameOfLife(b.canerRate);
+					}
+					else
+						{
+						cell.state = cell.gameOfCancer();
+					};
 					cell.draw(cell.state);
 				});
 			});
 			//now we get the next values after we created a new state
-			b.gameMatrix.forEach(cellArray=>cellArray.forEach(cell=>cell.updateFriends()));
-		}	
+			b.gameMatrix.forEach((cellArray)=>
+				{
+				cellArray.forEach((cell)=>
+					{
+			
+					cell.updateFriends()
+				});
+			});
+		},
+		killCancer: function()
+			{
+			b.gameMatrix.forEach((cellArray)=>
+				{
+				cellArray.forEach((cell)=>
+					{
+					cell.cancer = 0; 
+					cell.draw();
+				});
+			});
+			b.gameMatrix.forEach((cellArray)=>
+				{
+				cellArray.forEach((cell)=>
+					{
+					cell.updateFriends(); 
+				
+				});
+			});
+		},
+		seedCancer(val)
+			{
+			b.gameMatrix.forEach(cellArray=>cellArray.forEach(cell=>cell.setSeededCancer(val)));
+		}
+
 	}
 
 	for(let i = 0; i < width; i++)
@@ -154,7 +280,7 @@ let board = function(height, width)
 		for(let j= 0; j < height; j++)
 			{	
 			let position = {x:i*cellScale,y:j*cellScale};
-			let gameCell = createCell(Math.random(), position,i,j);
+			let gameCell = createCell(Math.random(), position,i,j, Math.random());
 			gameCell.draw();
 			gameArray.push(gameCell);
 		}
@@ -189,7 +315,8 @@ let board = function(height, width)
 			let neightbors = adjacent.map((x)=> { 
 
 				let lastState = x.state;
-				let container = [lastState	, x];
+				let lastCancer = x.cancer;
+				let container = [lastState	, x, lastCancer];
 				return container;
 
 			});
@@ -220,7 +347,7 @@ function Flat(array)
 	return holdBucket;
 
 }
-let gameBoard = board(350,350);
+let gameBoard = board(250,250);
 function total(array)
 	{
 	if(array == undefined)
@@ -272,6 +399,35 @@ const stepbutton = document.createElement('button');
 		gameBoard.stepForward();
 	});
 
+const killCancerButton = document.createElement('button');
+	killCancerButton.innerHTML = "Kill Cancer";
+	killCancerButton.addEventListener('click', function()
+		{
+		gameBoard.killCancer();
+	});
+
+	const setCanerButton = document.createElement('button');
+	setCanerButton.innerHTML = "seed Cancer";
+	setCanerButton.addEventListener('click', function()
+		{
+		let cancerInput = document.getElementById('cancerInput');
+		let cancerValue = cancerInput.value;
+		gameBoard.seedCancer(cancerValue);
+		gameBoard.canerRate = cancerValue;
+	});
+
+
+	const cancerInput = document.createElement('select');
+	cancerInput.setAttribute('id', 'cancerInput');
+	cancerInput.innerHTML = "0.001";
+	const cancerOptions = [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1];
+	cancerOptions.forEach((option)=>
+		{
+		let optionE = document.createElement('option');
+		optionE.value = option;
+		optionE.innerHTML = option;
+		cancerInput.add(optionE);
+	});
 const wipeButton = document.createElement('button');
 	wipeButton.innerHTML = "click me to wipe the board";
 	wipeButton.addEventListener('click', function()
@@ -291,6 +447,9 @@ body.appendChild(turnOn);
 body.appendChild(turnOff);
 body.appendChild(stepbutton);
 body.appendChild(wipeButton);
+body.appendChild(cancerInput);
+body.appendChild(setCanerButton);
+body.appendChild(killCancerButton);
 
 body.appendChild(createGliderButton)
 </script></body>
