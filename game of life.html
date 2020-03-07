@@ -11,8 +11,8 @@
 <script>
 
 const canvas = document.querySelector('canvas');
-canvas.height = 4320;
-	canvas.width = 7680;
+canvas.height = 2160;
+	canvas.width = 3840;
 const cellScale = 4;
 const ctx = canvas.getContext('2d');
 const savePath = "/images";
@@ -42,9 +42,19 @@ function saveImage(count,path)
   ajax.send("imageBitmap="+sendObject.imageData+"&count="+sendObject.count+"&filePath="+sendObject.filePath);
   
   	return true;
-  
 }
+function createButton(html, fn)
+	{
+	console.log(fn);	
+	const button = document.createElement('button');
+	button.innerHTML = html;
+	button.addEventListener('click', function()
+		{
+		fn();
 
+	});
+	return button;
+}
 function* itteration()
 	{
 	let itter = 0;
@@ -55,7 +65,75 @@ function* itteration()
 		yield itter;
 	}
 }
+
+
 let itterator = itteration();
+const shapeOfGliderGenerator = 
+	[
+	{col:0, row:0},
+	{col:-1, row: 0},
+	{col:-1, row: 1},
+	{col:-1, row: -1},
+	{col:-2, row: -2},
+	{col:-2, row: 2},
+	{col:-3, row: 0},
+	{col:-4, row: 3},
+	{col:-4, row: -3},
+	{col:-5, row: 3},
+	{col:-5, row: -3},
+	{col:-6, row: 2},
+	{col:-6, row: -2},
+	{col:-7, row: 1},
+	{col:-7, row: 0},
+	{col:-7, row: -1},
+
+		//fat glider boy
+	{col:3, row: -1},
+	{col:3, row: -2},
+	{col:3, row: -3},
+	{col:4, row: -1},
+	{col:4, row: -2},
+	{col:4, row: -3},
+	{col:5, row: -4},
+	{col:5, row: 0},
+	{col:7, row: 0},
+	{col:7, row: 1},
+	{col:7, row: -4},
+	{col:7, row: -5},
+
+
+		//bouncy block 1
+	{col:-16, row: -1},
+	{col:-16, row: 0},
+	{col:-17, row: -1},
+	{col:-17, row: 0},
+
+		//bouncy block 2
+
+	{col:17, row: -2},
+	{col:17, row: -3},
+	{col:18, row: -3},
+	{col:18, row: -2},
+];
+/*const shapeOfPufferEngine=
+	[
+	{col:, row:},
+];
+*/
+const gliderGenerator = createShape(shapeOfGliderGenerator);
+function createShape(pattern)
+	{
+	let shape = 
+		{
+		imprints: [],
+		pattern:pattern,
+		imprintOnGrid:function(col,row)
+			{
+			shape.pattern.forEach(mod=>shape.imprints.push(gameBoard.gameMatrix[col+mod.col][row+mod.row]));		
+		}
+	}
+	return shape;
+}
 let createCell = function(state, position, column, row, cancerRate)
 	{
 	let rState = 0	
@@ -240,8 +318,8 @@ let board = function(height, width)
 		},
 		createGlider:function()
 			{
-			let randCol = Math.floor(Math.min(Math.random()*b.gameMatrix.length, b.gameMatrix.length-3));	
-			let randRow = Math.floor(Math.min(Math.random()*b.gameMatrix[randCol].length, b.gameMatrix[randCol].length-3));	
+			let randCol = Math.floor(Math.min(Math.random()*b.gameMatrix.length, b.gameMatrix.length-20));	
+			let randRow = Math.floor(Math.min(Math.random()*b.gameMatrix[randCol].length, b.gameMatrix[randCol].length-20));	
 
 			let glider = [
 				b.gameMatrix[randCol][randRow],
@@ -255,6 +333,20 @@ let board = function(height, width)
 				x.state = 1;
 				x.draw(1);
 			});
+			b.updateState();
+		},
+		createShape:function(shape)
+			{
+			let randCol = Math.floor(Math.min(Math.random()*b.gameMatrix.length, b.gameMatrix.length-20));	
+			let randRow = Math.floor(Math.min(Math.random()*b.gameMatrix[randCol].length, b.gameMatrix[randCol].length-20));	
+			shape.imprints.length = 0;
+			shape.imprintOnGrid(randCol,randRow);
+			shape.imprints.forEach((x)=>
+				{
+				x.state = 1;
+				x.draw(1);
+			});
+				b.updateState();
 
 		},
 		stepForward:function()
@@ -306,6 +398,11 @@ let board = function(height, width)
 		seedCancer(val)
 			{
 			b.gameMatrix.forEach(cellArray=>cellArray.forEach(cell=>cell.setSeededCancer(val)));
+		},
+		updateState:function()
+			{
+			b.gameMatrix.forEach(cellArray=>cellArray.forEach(cell=>cell.updateFriends()));
+
 		}
 
 	}
@@ -383,7 +480,7 @@ function Flat(array)
 	return holdBucket;
 
 }
-let gameBoard = board(1080,1920);
+let gameBoard = board(540,960);
 function total(array)
 	{
 	if(array == undefined)
@@ -435,6 +532,24 @@ turnOn.addEventListener('click', function()
 		}
 	},400)		
 });
+
+
+const cancerOptions = [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1];
+const turnOff = createButton("PAUSE", function(){on=false;});
+const stepButton = createButton('STEP FORWARD', gameBoard.stepForward);
+const killCancerButton = createButton('KILL CANCER', gameBoard.killCancer);
+const setCancerButton = createButton("SET CANCER",function()
+	{
+	let cancerInput = document.getElementById('cancerInput');
+	let cancerValue = cancerInput.value;
+	gameBoard.seedCancer(cancerValue);
+	gameBoard.canerRate = cancerValue;
+	});
+const wipeButton = createButton("WIPE BOARD", gameBoard.wipe);
+const createGliderButton = createButton("GLIDER",gameBoard.createGlider);
+const createGliderGeneratorButton = createButton("GLIDER GENERATOR", function(){gameBoard.createShape(gliderGenerator)});
+/*
+
 const turnOff =  document.createElement("button");
 turnOff.innerHTML = "click me to pause";
 turnOff.addEventListener('click', function()
@@ -466,11 +581,10 @@ const killCancerButton = document.createElement('button');
 		gameBoard.canerRate = cancerValue;
 	});
 
-
+*/
 	const cancerInput = document.createElement('select');
 	cancerInput.setAttribute('id', 'cancerInput');
 	cancerInput.innerHTML = "0.001";
-	const cancerOptions = [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1];
 	cancerOptions.forEach((option)=>
 		{
 		let optionE = document.createElement('option');
@@ -478,7 +592,7 @@ const killCancerButton = document.createElement('button');
 		optionE.innerHTML = option;
 		cancerInput.add(optionE);
 	});
-const wipeButton = document.createElement('button');
+/*const wipeButton = document.createElement('button');
 	wipeButton.innerHTML = "click me to wipe the board";
 	wipeButton.addEventListener('click', function()
 		{
@@ -492,14 +606,18 @@ const createGliderButton = document.createElement('button');
 		gameBoard.gameMatrix.forEach(cellArray=>cellArray.forEach(cell=>cell.updateFriends()));
 
 	});
+*/
+
 const body = document.getElementById("body");
 body.appendChild(turnOn);
 body.appendChild(turnOff);
-body.appendChild(stepbutton);
+body.appendChild(stepButton);
 body.appendChild(wipeButton);
 body.appendChild(cancerInput);
-body.appendChild(setCanerButton);
+body.appendChild(setCancerButton);
 body.appendChild(killCancerButton);
+body.appendChild(createGliderGeneratorButton);
+body.appendChild(createGliderButton);
 
-body.appendChild(createGliderButton)
-</script></body>
+</script>
+</body>
