@@ -11,9 +11,9 @@
 <script>
 
 const canvas = document.querySelector('canvas');
-canvas.height = 1080;
-	canvas.width = 1920;
-const cellScale = 8;
+canvas.height = 4320;
+	canvas.width = 7680;
+const cellScale = 4;
 const ctx = canvas.getContext('2d');
 const savePath = "/images";
 function saveImage(count,path) 
@@ -136,12 +136,12 @@ let createCell = function(state, position, column, row, cancerRate)
 			let cancerCheck = total(cell.neighbors.map(x=>x[2]));
 			if(cell.state == 1) //alive rules
 				{
-				if((cancerCheck == 2 && cancerCheck == value))
+				if((cancerCheck == 1 && 3 >= value))
 					{	
 					let friendContainer = cell.neighbors.find(container=>container[2] == 1);
 					//	friendContainer[2] = 0;
 					let friendCancer = total(friendContainer[1].neighbors.map(x=> x[2]));
-					if(friendCancer > 2)
+					if(friendCancer > 0)
 						{
 						changeToGameOfCancer = true;	
 					}
@@ -160,7 +160,7 @@ let createCell = function(state, position, column, row, cancerRate)
 					rState = 1; //be alive only if 3 or more neighbors are alive
 
 				}
-				if(cancerCheck > 1 && value < 3)
+				if(cancerCheck > 1 && value < 4)
 						{
 
 						let friendContainer = cell.neighbors.find(container=>container[2] == 1);	
@@ -185,7 +185,7 @@ let createCell = function(state, position, column, row, cancerRate)
 			let rCancerState = 0;
 			let stillCancer = true;
 			let cancerCheck = total(cell.neighbors.map(x=>x[2]));
-			if(value == 8 ||  cancerCheck == value || (value == 0))
+			if((value >= 3 && cancerCheck <= value) || (value == 0))
 				{
 				stillCancer = false;
 			}
@@ -240,8 +240,8 @@ let board = function(height, width)
 		},
 		createGlider:function()
 			{
-			let randCol = Math.floor(Math.min(Math.random()*b.gameMatrix.length, b.gameMatrix.length-1));	
-			let randRow = Math.floor(Math.min(Math.random()*b.gameMatrix[randCol].length, b.gameMatrix[randCol].length-1));	
+			let randCol = Math.floor(Math.min(Math.random()*b.gameMatrix.length, b.gameMatrix.length-3));	
+			let randRow = Math.floor(Math.min(Math.random()*b.gameMatrix[randCol].length, b.gameMatrix[randCol].length-3));	
 
 			let glider = [
 				b.gameMatrix[randCol][randRow],
@@ -383,7 +383,7 @@ function Flat(array)
 	return holdBucket;
 
 }
-let gameBoard = board(135,240);
+let gameBoard = board(1080,1920);
 function total(array)
 	{
 	if(array == undefined)
