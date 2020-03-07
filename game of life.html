@@ -9,11 +9,42 @@
 <canvas id="canvas" class="canvas"></canvas>
 
 <script>
+
 const canvas = document.querySelector('canvas');
-const cellScale = 4;
-const ctx = canvas.getContext('2d');
-canvas.width = 1920;
 canvas.height = 1080;
+	canvas.width = 1920;
+const cellScale = 8;
+const ctx = canvas.getContext('2d');
+const savePath = "/images";
+function saveImage(count,path) 
+	{
+	var canvasData = canvas.toDataURL("image/png");
+	let sendObject = 
+		{
+		imageData: canvasData,
+		filePath:path,
+		count:count
+	}	
+  var xmlHttpReq = false;
+
+  if (window.XMLHttpRequest) {
+    ajax = new XMLHttpRequest();
+  }
+  else if (window.ActiveXObject) {
+    ajax = new ActiveXObject("Microsoft.XMLHTTP");
+  }
+
+  ajax.open("POST", "saveimage.php", false);
+  ajax.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+  ajax.onreadystatechange = function() {
+  }
+  let save = false;
+  ajax.send("imageBitmap="+sendObject.imageData+"&count="+sendObject.count+"&filePath="+sendObject.filePath);
+  
+  	return true;
+  
+}
+
 function* itteration()
 	{
 	let itter = 0;
@@ -109,7 +140,7 @@ let createCell = function(state, position, column, row, cancerRate)
 					{	
 					let friendContainer = cell.neighbors.find(container=>container[2] == 1);
 					//	friendContainer[2] = 0;
-					let friendCancer = total(friendContainer[1].neighbors.map(x=> x[0]));
+					let friendCancer = total(friendContainer[1].neighbors.map(x=> x[2]));
 					if(friendCancer > 2)
 						{
 						changeToGameOfCancer = true;	
@@ -131,9 +162,10 @@ let createCell = function(state, position, column, row, cancerRate)
 				}
 				if(cancerCheck > 1 && value < 3)
 						{
+
 						let friendContainer = cell.neighbors.find(container=>container[2] == 1);	
-						let friendCancer = 	total(friendContainer[1].neighbors.map(x=>x[2]));	
-						if(friendCancer-1 > value)
+						let friendvalue = total(friendContainer[1].neighbors.map(x=>x[0]));	
+						if(friendvalue-1 > value)
 							{
 							changeToGameOfCancer = true;
 						}
@@ -191,6 +223,7 @@ let board = function(height, width)
 		{	
 		gameMatrix: [],
 		cancerRate:0,
+		saveCount:9999,
 		wipe:function()
 			{
 			ctx.fillStyle  = "#ffffff";
@@ -350,7 +383,7 @@ function Flat(array)
 	return holdBucket;
 
 }
-let gameBoard = board(250,250);
+let gameBoard = board(135,240);
 function total(array)
 	{
 	if(array == undefined)
@@ -372,21 +405,35 @@ function total(array)
 	return y;
 }
  
-
+const engine = function()
+	{
+		
+};	
 const turnOn = document.createElement("button");
 turnOn.innerHTML = "click me to start";
 let on = false;
 turnOn.addEventListener('click', function()
 	{
-	on = true;	
+	on = true;
+	let itteration = 0;	
 	const engine = window.setInterval(function()
 		{
+	
 		gameBoard.stepForward();
-		if(!on)
+		let savedThisImage =  saveImage(itteration,savePath);
+		if(!savedThisImage || itteration == gameBoard.saveCount)
+			{
+			on = false;
+		}
+		else
+			{
+			itteration ++;	
+		}
+		if(on == false)
 			{
 			window.clearInterval(engine);
 		}
-	},10);	
+	},400)		
 });
 const turnOff =  document.createElement("button");
 turnOff.innerHTML = "click me to pause";
