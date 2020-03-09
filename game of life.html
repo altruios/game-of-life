@@ -7,15 +7,26 @@
 //rule 4
 <body id="body">
 <canvas id="canvas" class="canvas"></canvas>
+<div id="source" visibility="hidden">
+	<p>this is all from <a href="https://www.conwaylife.com/ref/lexicon/lex_home.htm">https://www.conwaylife.com/ref/lexicon/lex_home.htm</a></p>
+	<p>they have fantastic work done.</p>
+	<p>I am still working on lining up the names with the correct shapes, that's a work in progress</p>
+	<p>the text here has been pruded a bit to pass into the parser I wrote a little easier.</p>
+	<p>the full text can be found at:<a href="https://www.conwaylife.com/"> https://www.conwaylife.com/</a></p>
 
+</div>
+<script src="artParser.js"></script>
 <script>
-
 const canvas = document.querySelector('canvas');
-canvas.height = 2160;
-	canvas.width = 3840;
+canvas.height = 1080;
+canvas.width = 1920;
 const cellScale = 4;
 const ctx = canvas.getContext('2d');
 const savePath = "/images";
+source.style.maxHeight = "100vh";
+ //defined in artparser
+source.style.overflow = "scroll";
+
 function saveImage(count,path) 
 	{
 	var canvasData = canvas.toDataURL("image/png");
@@ -27,16 +38,19 @@ function saveImage(count,path)
 	}	
   var xmlHttpReq = false;
 
-  if (window.XMLHttpRequest) {
+  if (window.XMLHttpRequest) 
+  	{
     ajax = new XMLHttpRequest();
   }
-  else if (window.ActiveXObject) {
+  else if (window.ActiveXObject) 
+  	{
     ajax = new ActiveXObject("Microsoft.XMLHTTP");
   }
 
   ajax.open("POST", "saveimage.php", false);
   ajax.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
-  ajax.onreadystatechange = function() {
+  ajax.onreadystatechange = function() 	
+  	{
   }
   let save = false;
   ajax.send("imageBitmap="+sendObject.imageData+"&count="+sendObject.count+"&filePath="+sendObject.filePath);
@@ -122,14 +136,23 @@ const shapeOfGliderGenerator =
 */
 const gliderGenerator = createShape(shapeOfGliderGenerator);
 function createShape(pattern)
-	{
+	{	
 	let shape = 
 		{
 		imprints: [],
 		pattern:pattern,
+		bounds:{
+			vertical:50,
+			horizontal:50
+		},
 		imprintOnGrid:function(col,row)
 			{
-			shape.pattern.forEach(mod=>shape.imprints.push(gameBoard.gameMatrix[col+mod.col][row+mod.row]));		
+			shape.pattern.forEach((mod)=>
+				{	
+				let targetCol = col+mod.col;
+				let targetRow = row+mod.row;	
+				shape.imprints.push(gameBoard.gameMatrix[targetCol][targetRow]);
+			});		
 		}
 	}
 	return shape;
@@ -155,6 +178,7 @@ let createCell = function(state, position, column, row, cancerRate)
 		row: row,
 		column: column,
 		cancer:rCaner,
+		cancerCount:0,
 		id: itterator.next().value,
 		draw: function(what)
 			{
@@ -195,7 +219,7 @@ let createCell = function(state, position, column, row, cancerRate)
 					}
 				}
 			}
-			ctx.fillRect(cell.x, cell.y, cellScale-1, cellScale-1);
+			ctx.fillRect(cell.x, cell.y, cellScale, cellScale);
 			ctx.stroke();
 		},
 		updateFriends:function()
@@ -214,12 +238,12 @@ let createCell = function(state, position, column, row, cancerRate)
 			let cancerCheck = total(cell.neighbors.map(x=>x[2]));
 			if(cell.state == 1) //alive rules
 				{
-				if((cancerCheck == 1 && 3 >= value))
+				if(cancerCheck > 0)
 					{	
 					let friendContainer = cell.neighbors.find(container=>container[2] == 1);
 					//	friendContainer[2] = 0;
 					let friendCancer = total(friendContainer[1].neighbors.map(x=> x[2]));
-					if(friendCancer > 0)
+					if(friendCancer > 1)
 						{
 						changeToGameOfCancer = true;	
 					}
@@ -238,12 +262,15 @@ let createCell = function(state, position, column, row, cancerRate)
 					rState = 1; //be alive only if 3 or more neighbors are alive
 
 				}
-				if(cancerCheck > 1 && value < 4)
+				else if(cancerCheck == 2)
 						{
-
-						let friendContainer = cell.neighbors.find(container=>container[2] == 1);	
-						let friendvalue = total(friendContainer[1].neighbors.map(x=>x[0]));	
-						if(friendvalue-1 > value)
+						changeToGameOfCancer = true;
+					}
+				else if(cancerCheck==1)
+					{		
+					let friendContainer = cell.neighbors.find(container=>container[2] == 1);	
+					let friendCancer = total(friendContainer[1].neighbors.map(x=>x[2]));	
+					 if(friendCancer > value)
 							{
 							changeToGameOfCancer = true;
 						}
@@ -261,21 +288,38 @@ let createCell = function(state, position, column, row, cancerRate)
 			{
 			let value = total(cell.neighbors.map(x=> x[0])); //the value is the last snapshot of the neighbor grid		
 			let rCancerState = 0;
-			let stillCancer = true;
+			let stillCancer = false;
 			let cancerCheck = total(cell.neighbors.map(x=>x[2]));
-			if((value >= 3 && cancerCheck <= value) || (value == 0))
+			let friendsCancerCount = 0;
+			cell.neighbors.forEach(neighbor=> friendsCancerCount += neighbor[1].neighbors.filter(x=>x[2] === 1).length);
+			if(value < cancerCheck || cell.cancercount == 0)
 				{
-				stillCancer = false;
+				stillCancer = true;
 			}
-		
+
 			if(stillCancer)
 				{
-				rCancerState = 1;
-				cell.cancer = 1;
+				if(cell.cancerCount > 0)
+					{
+					rCancerState = 0;
+					cell.cancer = 0;
+					cell.cancerCount = 0;
+				}
+				else
+					{	
+					rCancerState = 1;
+					cell.cancer = 1;
+					cell.cancerCount++;
+				}
 			}
 			else
 				{
+				if(cell.cancerCount > 2)
+					{
+					rCancerState = 1;		
+				}	
 				cell.cancer = 0;
+				cell.canerCount = 0;
 			}
 			return rCancerState
 
@@ -337,8 +381,8 @@ let board = function(height, width)
 		},
 		createShape:function(shape)
 			{
-			let randCol = Math.floor(Math.min(Math.random()*b.gameMatrix.length, b.gameMatrix.length-20));	
-			let randRow = Math.floor(Math.min(Math.random()*b.gameMatrix[randCol].length, b.gameMatrix[randCol].length-20));	
+			let randCol = randomNumber(shape.bounds.vertical ,b.gameMatrix.length-shape.bounds.vertical);	
+			let randRow = randomNumber(shape.bounds.horizontal, b.gameMatrix[randCol].length-shape.bounds.horizontal);
 			shape.imprints.length = 0;
 			shape.imprintOnGrid(randCol,randRow);
 			shape.imprints.forEach((x)=>
@@ -480,7 +524,7 @@ function Flat(array)
 	return holdBucket;
 
 }
-let gameBoard = board(540,960);
+let gameBoard = board(270,480);
 function total(array)
 	{
 	if(array == undefined)
@@ -501,7 +545,13 @@ function total(array)
 	}	
 	return y;
 }
- 
+ function randomNumber(min, max) 
+ 	{  
+    min = Math.ceil(min); 
+    max = Math.floor(max); 
+    return Math.floor(Math.random() * (max - min + 1)) + min; 
+}  
+  
 const engine = function()
 	{
 		
@@ -518,7 +568,7 @@ turnOn.addEventListener('click', function()
 	
 		gameBoard.stepForward();
 		let savedThisImage =  saveImage(itteration,savePath);
-		if(!savedThisImage || itteration == gameBoard.saveCount)
+		if(!savedThisImage || itteration >= gameBoard.saveCount)
 			{
 			on = false;
 		}
@@ -530,7 +580,7 @@ turnOn.addEventListener('click', function()
 			{
 			window.clearInterval(engine);
 		}
-	},400)		
+	},200)		
 });
 
 
@@ -547,41 +597,9 @@ const setCancerButton = createButton("SET CANCER",function()
 	});
 const wipeButton = createButton("WIPE BOARD", gameBoard.wipe);
 const createGliderButton = createButton("GLIDER",gameBoard.createGlider);
-const createGliderGeneratorButton = createButton("GLIDER GENERATOR", function(){gameBoard.createShape(gliderGenerator)});
-/*
 
-const turnOff =  document.createElement("button");
-turnOff.innerHTML = "click me to pause";
-turnOff.addEventListener('click', function()
-	{
-	on = false;
-});
 
-const stepbutton = document.createElement('button');
-	stepbutton.innerHTML = "click me to step forward";
-	stepbutton.addEventListener('click', function()
-		{
-		gameBoard.stepForward();
-	});
 
-const killCancerButton = document.createElement('button');
-	killCancerButton.innerHTML = "Kill Cancer";
-	killCancerButton.addEventListener('click', function()
-		{
-		gameBoard.killCancer();
-	});
-
-	const setCanerButton = document.createElement('button');
-	setCanerButton.innerHTML = "seed Cancer";
-	setCanerButton.addEventListener('click', function()
-		{
-		let cancerInput = document.getElementById('cancerInput');
-		let cancerValue = cancerInput.value;
-		gameBoard.seedCancer(cancerValue);
-		gameBoard.canerRate = cancerValue;
-	});
-
-*/
 	const cancerInput = document.createElement('select');
 	cancerInput.setAttribute('id', 'cancerInput');
 	cancerInput.innerHTML = "0.001";
@@ -592,32 +610,51 @@ const killCancerButton = document.createElement('button');
 		optionE.innerHTML = option;
 		cancerInput.add(optionE);
 	});
-/*const wipeButton = document.createElement('button');
-	wipeButton.innerHTML = "click me to wipe the board";
-	wipeButton.addEventListener('click', function()
-		{
-		gameBoard.wipe();
-	});
-const createGliderButton = document.createElement('button');
-	createGliderButton.innerHTML = "create glider";
-	createGliderButton.addEventListener('click', function()
-		{
-		gameBoard.createGlider();
-		gameBoard.gameMatrix.forEach(cellArray=>cellArray.forEach(cell=>cell.updateFriends()));
 
-	});
-*/
+let shapeSelector = document.createElement('select');
+	shapeSelector.setAttribute('id', 'shapeSelect');
+	shapeSelector.innerHTML = "SHAPE SELECTOR";
+	console.log(shapes);
+shapes.forEach((shape)=>
+	{
+	let option = document.createElement('option');
+	option.innerHTML = shape.name;
+	option.setAttribute('data-shape', shape);
+	option.setAttribute('data-shapeIndex', shapes.indexOf(shape));
+	shapeSelector.appendChild(option);
+});
+	shapeSelector.selectedIndex = [0];
+const shapeSelectorConfirmButton = createButton("SET THAT SHAPE TO A RANDOM LOCATION", function(){gameBoard.createShape(shapes[shapeSelector[shapeSelector.selectedIndex].getAttribute('data-shapeIndex')])});
+const randomShapeCount = document.createElement('input');
+	randomShapeCount.setAttribute('type', 'number');
+	randomShapeCount.setAttribute('range', "1-10");
+	randomShapeCount.value = 1;
+	randomShapeCount.setAttribute('id',"count"); 
+const randomShapesButton = createButton('CREATE RANDOM SHAPES', function()
+	{
+	let count = document.getElementById('count').value;	
+	for(let i=0; i< count; i++)
+		{
+		let x = randomNumber(1, shapes.length);	
+		gameBoard.createShape(shapes[x]);
+	}
+});
 
 const body = document.getElementById("body");
-body.appendChild(turnOn);
-body.appendChild(turnOff);
-body.appendChild(stepButton);
-body.appendChild(wipeButton);
-body.appendChild(cancerInput);
-body.appendChild(setCancerButton);
-body.appendChild(killCancerButton);
-body.appendChild(createGliderGeneratorButton);
-body.appendChild(createGliderButton);
+const controls = document.createElement('div');
+controls.setAttribute('id', 'controls');
+body.prepend(controls);
+controls.appendChild(turnOn);
+controls.appendChild(turnOff);
+controls.appendChild(stepButton);
+controls.appendChild(wipeButton);
+controls.appendChild(cancerInput);
+controls.appendChild(setCancerButton);
+controls.appendChild(killCancerButton);
+controls.appendChild(shapeSelector);
+controls.appendChild(shapeSelectorConfirmButton);
+controls.appendChild(randomShapeCount);
+controls.appendChild(randomShapesButton);
 
 </script>
 </body>

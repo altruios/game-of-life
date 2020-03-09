@@ -1,74 +1,86 @@
 //acsii parser
-
+var ajax = new XMLHttpRequest();
+ajax.open("GET", "lexicon.htm", false);
+ajax.send();
+const source = document.getElementById('source')
+	source.innerHTML += ajax.responseText;
 
 //input is:
+	let scrappedShapes = [];
+	let nameList = document.querySelectorAll('a[name]');
+	let shapeList = document.querySelectorAll('pre');
+	let parsedShapes = [];
+	let parsedNames = [];
+	nameList.forEach(name=> parsedNames.push(name.text));
+	shapeList.forEach(shape=> parsedShapes.push(shape.innerText));
+	for(let i=0; i<parsedShapes.length; i++)
+		{
+		let shapeObject = 
+			{
+			name:parsedNames[i],
+			pattern:parsedShapes[i]
+		}
+		scrappedShapes.push(shapeObject);
+}
+const shapes = [];
+scrappedShapes.forEach(scrappedShape=>shapes.push(readInput(scrappedShape)));
 
-let inputTESTIS = 
-	"............O....................\n"+ 
-	"..........OO.O...................\n"+
-	"..........OO...O.................\n"+
-	"........O...OO.O.....O...........\n"+
-	"........OOOO.OO...OOOO.......O.O.\n"+
-	"......O......O....OOO.....O.O..O.\n"+
-	"......OOOOOOO...O...O....O..O....\n"+
-	"...O.O......OO..O...O.O.OO....O..\n"+
-	"..OOOOOOOOO.....O..OO........O...\n"+
-	".OO..............O.OO.OOOO...O..O\n"+
-	"OO....OO.O..........O...O..O.O...\n"+
-	".OO....O........OOO......O.O.O..O\n"+
-	".........O......OO......O....OO..\n"+
-	".OO....O........OOO......O.O.O..O\n"+
-	"OO....OO.O..........O...O..O.O...\n"+
-	".OO..............O.OO.OOOO...O..O\n"+
-	"..OOOOOOOOO.....O..OO........O...\n"+
-	"...O.O......OO..O...O.O.OO....O..\n"+
-	"......OOOOOOO...O...O....O..O....\n"+
-	"......O......O....OOO.....O.O..O.\n"+
-	"........OOOO.OO...OOOO.......O.O.\n"+
-	"........O...OO.O.....O...........\n"+
-	"..........OO...O.................\n"+
-	"..........OO.O...................\n"+
-	"............O....................";
+//so this parses html files of just a shape stored in this format -- eventually
+//in the mean time - just doing it manually.
 
 
 
 	function readInput(input)
 		{
-		console.log('input is', input);	
-		let stringArray = input.split("\n");
-		console.log("string array is:", stringArray);
+		let stringArray = input.pattern.split("\n");
 		let counterCol = 0;
 		let counterRow = 0;
 		let objectCount = 0;
 		let returnContainer = [];
+
+		let colSize = stringArray.length;
+		let rowSize = Array.from(stringArray[0]).length;
+		let bounds = {
+			v:rowSize,
+			h:colSize
+		};
 		stringArray.forEach((stringLine)=>
 			{
-			console.log('stringLine is',stringLine)
 			stringLine = Array.from(stringLine);	
 			stringLine.forEach((stringItem)=>
 				{
-				console.log("stringItem is", stringItem);	
 				if(stringItem == 'O')
 					{
 					objectCount++;
 
-					console.log("making object");	
-					let cellObject = {col:counterCol, row:counterRow};
+					let cellObject = {col:counterRow, row: counterCol};
 					returnContainer.push(cellObject);
-				}
-				else{
-					console.log("not making object");
 				}
 				counterRow++;	
 			});
+			rowSize = counterRow;
 			counterRow = 0;
 			counterCol++;
 		});
-	console.log("number of cells to turn on should match the array size", objectCount);	
-	return returnContainer;		
+	let convertedObject = createShape(returnContainer, bounds, input.name)
+	return convertedObject;	
 	}
 
-
-
-console.log(readInput(inputTESTIS));
-const puffer = readInput(inputTESTIS);
+function createShape(pattern, bounds, name)
+	{
+	let shape = 
+		{
+		name: name,	
+		imprints: [],
+		bounds: {
+			vertical: bounds.v,
+			horizontal:bounds.h
+		},
+		pattern:pattern,
+		imprintOnGrid:function(col,row)
+			{
+			shape.pattern.forEach(mod=>shape.imprints.push(gameBoard.gameMatrix[col+mod.col][row+mod.row]));		
+		}
+	}
+	return shape;
+}
