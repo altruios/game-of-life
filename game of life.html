@@ -82,81 +82,7 @@ function* itteration()
 
 
 let itterator = itteration();
-const shapeOfGliderGenerator = 
-	[
-	{col:0, row:0},
-	{col:-1, row: 0},
-	{col:-1, row: 1},
-	{col:-1, row: -1},
-	{col:-2, row: -2},
-	{col:-2, row: 2},
-	{col:-3, row: 0},
-	{col:-4, row: 3},
-	{col:-4, row: -3},
-	{col:-5, row: 3},
-	{col:-5, row: -3},
-	{col:-6, row: 2},
-	{col:-6, row: -2},
-	{col:-7, row: 1},
-	{col:-7, row: 0},
-	{col:-7, row: -1},
 
-		//fat glider boy
-	{col:3, row: -1},
-	{col:3, row: -2},
-	{col:3, row: -3},
-	{col:4, row: -1},
-	{col:4, row: -2},
-	{col:4, row: -3},
-	{col:5, row: -4},
-	{col:5, row: 0},
-	{col:7, row: 0},
-	{col:7, row: 1},
-	{col:7, row: -4},
-	{col:7, row: -5},
-
-
-		//bouncy block 1
-	{col:-16, row: -1},
-	{col:-16, row: 0},
-	{col:-17, row: -1},
-	{col:-17, row: 0},
-
-		//bouncy block 2
-
-	{col:17, row: -2},
-	{col:17, row: -3},
-	{col:18, row: -3},
-	{col:18, row: -2},
-];
-/*const shapeOfPufferEngine=
-	[
-	{col:, row:},
-];
-*/
-const gliderGenerator = createShape(shapeOfGliderGenerator);
-function createShape(pattern)
-	{	
-	let shape = 
-		{
-		imprints: [],
-		pattern:pattern,
-		bounds:{
-			vertical:50,
-			horizontal:50
-		},
-		imprintOnGrid:function(col,row)
-			{
-			shape.pattern.forEach((mod)=>
-				{	
-				let targetCol = col+mod.col;
-				let targetRow = row+mod.row;	
-				shape.imprints.push(gameBoard.gameMatrix[targetCol][targetRow]);
-			});		
-		}
-	}
-	return shape;
-}
 let createCell = function(state, position, column, row, cancerRate)
 	{
 	let rState = 0	
@@ -559,22 +485,22 @@ const engine = function()
 const turnOn = document.createElement("button");
 turnOn.innerHTML = "click me to start";
 let on = false;
+let saveImageFlag = false;
 turnOn.addEventListener('click', function()
 	{
 	on = true;
 	let itteration = 0;	
 	const engine = window.setInterval(function()
 		{
-	
 		gameBoard.stepForward();
-		let savedThisImage =  saveImage(itteration,savePath);
-		if(!savedThisImage || itteration >= gameBoard.saveCount)
-			{
-			on = false;
-		}
-		else
-			{
-			itteration ++;	
+		itteration ++;	
+		if(saveImageFlag)
+			{			 	
+			let savedThisImage =  saveImage(itteration,savePath);
+			if(!savedThisImage || itteration >= gameBoard.saveCount)
+				{
+				on = false;
+			}
 		}
 		if(on == false)
 			{
@@ -582,7 +508,12 @@ turnOn.addEventListener('click', function()
 		}
 	},200)		
 });
-
+function toggle(bool)
+	{
+	if(bool){bool = false}
+	else{bool = true}
+		return bool;
+}
 
 const cancerOptions = [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1];
 const turnOff = createButton("PAUSE", function(){on=false;});
@@ -596,8 +527,11 @@ const setCancerButton = createButton("SET CANCER",function()
 	gameBoard.canerRate = cancerValue;
 	});
 const wipeButton = createButton("WIPE BOARD", gameBoard.wipe);
-const createGliderButton = createButton("GLIDER",gameBoard.createGlider);
+const saveImagesButton = createButton("START SAVING IMAGES", function()
+	{
 
+	toggle(saveImageFlag);
+});
 
 
 	const cancerInput = document.createElement('select');
@@ -655,6 +589,6 @@ controls.appendChild(shapeSelector);
 controls.appendChild(shapeSelectorConfirmButton);
 controls.appendChild(randomShapeCount);
 controls.appendChild(randomShapesButton);
-
+controls.appendChild(saveImagesButton);
 </script>
 </body>
