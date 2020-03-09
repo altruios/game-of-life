@@ -20,13 +20,17 @@
 const canvas = document.querySelector('canvas');
 canvas.height = 1080;
 canvas.width = 1920;
-const cellScale = 4;
+const cellScale = 2;
 const ctx = canvas.getContext('2d');
 const savePath = "/images";
 source.style.maxHeight = "100vh";
  //defined in artparser
 source.style.overflow = "scroll";
 
+let itterator = itteration();
+const gameBoardHeight = canvas.height / cellScale;
+const gameBoardWidth = canvas.width / cellScale;
+console.log("gameboard width and height", gameBoardHeight, gameBoardWidth)
 function saveImage(count,path) 
 	{
 	var canvasData = canvas.toDataURL("image/png");
@@ -81,82 +85,7 @@ function* itteration()
 }
 
 
-let itterator = itteration();
-const shapeOfGliderGenerator = 
-	[
-	{col:0, row:0},
-	{col:-1, row: 0},
-	{col:-1, row: 1},
-	{col:-1, row: -1},
-	{col:-2, row: -2},
-	{col:-2, row: 2},
-	{col:-3, row: 0},
-	{col:-4, row: 3},
-	{col:-4, row: -3},
-	{col:-5, row: 3},
-	{col:-5, row: -3},
-	{col:-6, row: 2},
-	{col:-6, row: -2},
-	{col:-7, row: 1},
-	{col:-7, row: 0},
-	{col:-7, row: -1},
 
-		//fat glider boy
-	{col:3, row: -1},
-	{col:3, row: -2},
-	{col:3, row: -3},
-	{col:4, row: -1},
-	{col:4, row: -2},
-	{col:4, row: -3},
-	{col:5, row: -4},
-	{col:5, row: 0},
-	{col:7, row: 0},
-	{col:7, row: 1},
-	{col:7, row: -4},
-	{col:7, row: -5},
-
-
-		//bouncy block 1
-	{col:-16, row: -1},
-	{col:-16, row: 0},
-	{col:-17, row: -1},
-	{col:-17, row: 0},
-
-		//bouncy block 2
-
-	{col:17, row: -2},
-	{col:17, row: -3},
-	{col:18, row: -3},
-	{col:18, row: -2},
-];
-/*const shapeOfPufferEngine=
-	[
-	{col:, row:},
-];
-*/
-const gliderGenerator = createShape(shapeOfGliderGenerator);
-function createShape(pattern)
-	{	
-	let shape = 
-		{
-		imprints: [],
-		pattern:pattern,
-		bounds:{
-			vertical:50,
-			horizontal:50
-		},
-		imprintOnGrid:function(col,row)
-			{
-			shape.pattern.forEach((mod)=>
-				{	
-				let targetCol = col+mod.col;
-				let targetRow = row+mod.row;	
-				shape.imprints.push(gameBoard.gameMatrix[targetCol][targetRow]);
-			});		
-		}
-	}
-	return shape;
-}
 let createCell = function(state, position, column, row, cancerRate)
 	{
 	let rState = 0	
@@ -524,7 +453,6 @@ function Flat(array)
 	return holdBucket;
 
 }
-let gameBoard = board(270,480);
 function total(array)
 	{
 	if(array == undefined)
@@ -551,7 +479,8 @@ function total(array)
     max = Math.floor(max); 
     return Math.floor(Math.random() * (max - min + 1)) + min; 
 }  
-  
+  let gameBoard = board(gameBoardHeight,gameBoardWidth);
+
 const engine = function()
 	{
 		
@@ -596,11 +525,10 @@ const setCancerButton = createButton("SET CANCER",function()
 	gameBoard.canerRate = cancerValue;
 	});
 const wipeButton = createButton("WIPE BOARD", gameBoard.wipe);
-const createGliderButton = createButton("GLIDER",gameBoard.createGlider);
 
 
 
-	const cancerInput = document.createElement('select');
+const cancerInput = document.createElement('select');
 	cancerInput.setAttribute('id', 'cancerInput');
 	cancerInput.innerHTML = "0.001";
 	cancerOptions.forEach((option)=>
