@@ -1,10 +1,21 @@
 //conways game of life
 
 
-//rules 1 
-//rule 2
-//rule 3
-//rule 4
+//rules 1 if you are alive, and have 2 or 3 neighbors, stay alive
+//rule 2 if you are alive, and next to less than 2, die.
+//rule 3 if you are alive and next to more than 3, die.
+//rule 4 if you are dead and next to Exactly 3, become alive.
+<style>
+	
+[data-saveimagestate = "true"]
+	{
+	background: #00ff00;
+}
+[data-saveImageState = "false"]
+	{
+	background: #0f96f0;
+}
+</style>
 <body id="body">
 <canvas id="canvas" class="canvas"></canvas>
 <div id="source" visibility="hidden">
@@ -17,258 +28,25 @@
 </div>
 <script src="artParser.js"></script>
 <script>
+
 const canvas = document.querySelector('canvas');
-canvas.height = 1080;
-canvas.width = 1920;
-const cellScale = 2;
 const ctx = canvas.getContext('2d');
 const savePath = "/images";
-source.style.maxHeight = "100vh";
- //defined in artparser
-source.style.overflow = "scroll";
 
-let itterator = itteration();
+let on = false;
+let saveImageFlag = false;
+const cellScale = 2;
+canvas.height = 1080;
+canvas.width = 1920;
 const gameBoardHeight = canvas.height / cellScale;
 const gameBoardWidth = canvas.width / cellScale;
-console.log("gameboard width and height", gameBoardHeight, gameBoardWidth)
-function saveImage(count,path) 
-	{
-	var canvasData = canvas.toDataURL("image/png");
-	let sendObject = 
-		{
-		imageData: canvasData,
-		filePath:path,
-		count:count
-	}	
-  var xmlHttpReq = false;
+const itterator = itteration();
+const gameBoard = board(gameBoardHeight,gameBoardWidth);
+const cancerOptions = [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1];
+const workerLimit = 7;
 
-  if (window.XMLHttpRequest) 
-  	{
-    ajax = new XMLHttpRequest();
-  }
-  else if (window.ActiveXObject) 
-  	{
-    ajax = new ActiveXObject("Microsoft.XMLHTTP");
-  }
-
-  ajax.open("POST", "saveimage.php", false);
-  ajax.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
-  ajax.onreadystatechange = function() 	
-  	{
-  }
-  let save = false;
-  ajax.send("imageBitmap="+sendObject.imageData+"&count="+sendObject.count+"&filePath="+sendObject.filePath);
-  
-  	return true;
-}
-function createButton(html, fn)
-	{
-	console.log(fn);	
-	const button = document.createElement('button');
-	button.innerHTML = html;
-	button.addEventListener('click', function()
-		{
-		fn();
-
-	});
-	return button;
-}
-function* itteration()
-	{
-	let itter = 0;
-	yield itter;	
-	while (true)
-		{
-		itter++;
-		yield itter;
-	}
-}
-
-let itterator = itteration();
-
-let createCell = function(state, position, column, row, cancerRate)
-	{
-	let rState = 0	
-	if(state > 0.96)
-		{
-		rState = 1;	
-	}
-	let rCaner = 0;
-	if(cancerRate > 0.7704)
-		{
-		rCaner = 1;
-	}	
-	let cell = 
-		{	
-		state: rState,
-		neighbors: [],
-		x: position.x,
-		y: position.y,
-		row: row,
-		column: column,
-		cancer:rCaner,
-		cancerCount:0,
-		id: itterator.next().value,
-		draw: function(what)
-			{
-			if(what)
-				{
-				if(what == 1)
-					{
-					ctx.fillStyle  = "#000000";
-					if(cell.cancer)
-						{
-						ctx.fillStyle = "#ff00f0";
-					}
-				}
-				else{
-					ctx.fillStyle  = "#ffffff";
-						if(cell.cancer)
-						{
-						ctx.fillStyle = "#ff00f0";
-					}
-				}
-			}	
-			else
-				{
-				if(cell.state == 1)
-					{
-					ctx.fillStyle  = "#000000";
-					if(cell.cancer)
-						{
-						ctx.fillStyle = "#ff00f0";
-					}
-				}
-				else
-					{
-					ctx.fillStyle  = "#ffffff";
-						if(cell.cancer)
-						{
-						ctx.fillStyle = "#ff00f0";
-					}
-				}
-			}
-			ctx.fillRect(cell.x, cell.y, cellScale, cellScale);
-			ctx.stroke();
-		},
-		updateFriends:function()
-			{
-			this.neighbors.forEach((container)=> 
-				{
-				container[0] = container[1].state;
-				container[2] = container[1].cancer;
-			});	
-		},
-		gameOfLife: function(cancerR)
-			{
-			let changeToGameOfCancer = false;	
-			let value = total(cell.neighbors.map(x=> x[0])); //the value is the last snapshot of the neighbor grid	
-			let rState = 0; 
-			let cancerCheck = total(cell.neighbors.map(x=>x[2]));
-			if(cell.state == 1) //alive rules
-				{
-				if(cancerCheck > 0)
-					{	
-					let friendContainer = cell.neighbors.find(container=>container[2] == 1);
-					//	friendContainer[2] = 0;
-					let friendCancer = total(friendContainer[1].neighbors.map(x=> x[2]));
-					if(friendCancer > 1)
-						{
-						changeToGameOfCancer = true;	
-					}
-				}	
-				rState = 1;	//staying alive
-				if(value > 3 || value <= 1)//unless overcrowded, or under-fed 
-					{
-					rState = 0;
-				}
-			}
-			else 
-				{	
-				if(value == 3)
-					{
-					if(cancerCheck==3){changeToGameOfCancer= true}	
-					rState = 1; //be alive only if 3 or more neighbors are alive
-
-				}
-				else if(cancerCheck == 2)
-						{
-						changeToGameOfCancer = true;
-					}
-				else if(cancerCheck==1)
-					{		
-					let friendContainer = cell.neighbors.find(container=>container[2] == 1);	
-					let friendCancer = total(friendContainer[1].neighbors.map(x=>x[2]));	
-					 if(friendCancer > value)
-							{
-							changeToGameOfCancer = true;
-						}
-
-					}
-		}
-		
-			if(changeToGameOfCancer)
-				{
-				cell.cancer = 1;
-			}
-			return rState;
-		},
-		gameOfCancer: function()
-			{
-			let value = total(cell.neighbors.map(x=> x[0])); //the value is the last snapshot of the neighbor grid		
-			let rCancerState = 0;
-			let stillCancer = false;
-			let cancerCheck = total(cell.neighbors.map(x=>x[2]));
-			let friendsCancerCount = 0;
-			cell.neighbors.forEach(neighbor=> friendsCancerCount += neighbor[1].neighbors.filter(x=>x[2] === 1).length);
-			if(value < cancerCheck || cell.cancercount == 0)
-				{
-				stillCancer = true;
-			}
-
-			if(stillCancer)
-				{
-				if(cell.cancerCount > 0)
-					{
-					rCancerState = 0;
-					cell.cancer = 0;
-					cell.cancerCount = 0;
-				}
-				else
-					{	
-					rCancerState = 1;
-					cell.cancer = 1;
-					cell.cancerCount++;
-				}
-			}
-			else
-				{
-				if(cell.cancerCount > 2)
-					{
-					rCancerState = 1;		
-				}	
-				cell.cancer = 0;
-				cell.canerCount = 0;
-			}
-			return rCancerState
-
-		
-		},
-		setSeededCancer:function(seed)
-			{
-			if(cell.state ==1 )
-				{	
-				if(seed>Math.random())
-					{
-					cell.cancer = 1;
-					cell.draw();
-				}
-			}
-		}
-	}
-	return cell;
-}
-let board = function(height, width)
+//game board
+function board(height, width)
 	{
 	let b = 
 		{	
@@ -324,13 +102,42 @@ let board = function(height, width)
 		},
 		stepForward:function()
 			{
+/*			let workerPool = [];
+    	
+			for(let i=0; i<b.gameMatrix.length;i++)
+				{
+				if(workerPool >= workerLimit)
+					{
+					console.log('waiting at that index');
+					window.setTimeout(function(){},110);	
+				}	
+				else
+					{
+
+					let sendArray = b.gameMatrix[i].map((x)=>( 
+						{ 
+						state:x.state,	
+						neighbors:x.neighbors.map(y=>y[0]),
+						idRefference:x.id
+					})); 
+
+					let worker = new Worker('worker.js');
+					worker.onmessage = workerDone;
+					workerPool.push(worker);
+   		 			workerPool[i].postMessage({index:i,array:sendArray});
+   		 	}
+   		 }*/
+				//that fires off the first messenger. which 
+
+				//worker pattern not working
+	
 			b.gameMatrix.forEach((cellArray)=>
 				{
 				cellArray.forEach((cell) => 
 					{
 					if(!cell.cancer)
 						{	
-						cell.state = cell.gameOfLife(b.canerRate);
+						cell.state = cell.gameOfLife();
 					}
 					else
 						{
@@ -340,6 +147,7 @@ let board = function(height, width)
 				});
 			});
 			//now we get the next values after we created a new state
+
 			b.gameMatrix.forEach((cellArray)=>
 				{
 				cellArray.forEach((cell)=>
@@ -431,6 +239,208 @@ let board = function(height, width)
 	})
 	return b;
 }
+function createCell(state, position, column, row, cancerRate)
+	{
+	let rState = 0	
+	if(state > 0.96)
+		{
+		rState = 1;	
+	}
+	let rCaner = 0;
+	if(cancerRate > 0.7704)
+		{
+		rCaner = 1;
+	}	
+	let cell = 
+		{	
+		state: rState,
+		neighbors: [],
+		x: position.x,
+		y: position.y,
+		row: row,
+		column: column,
+		cancer:rCaner,
+		cancerCount:0,
+		id: itterator.next().value,
+		draw: function(what)
+			{
+			if(what)
+				{
+				if(what == 1)
+					{
+					ctx.fillStyle  = "#000000";
+					if(cell.cancer)
+						{
+						ctx.fillStyle = "#ff00f0";
+					}
+				}
+				else{
+					ctx.fillStyle  = "#ffffff";
+						if(cell.cancer)
+						{
+						ctx.fillStyle = "#ff00f0";
+					}
+				}
+			}	
+			else
+				{
+				if(cell.state == 1)
+					{
+					ctx.fillStyle  = "#000000";
+					if(cell.cancer)
+						{
+						ctx.fillStyle = "#ff00f0";
+					}
+				}
+				else
+					{
+					ctx.fillStyle  = "#ffffff";
+						if(cell.cancer)
+						{
+						ctx.fillStyle = "#ff00f0";
+					}
+				}
+			}
+			ctx.fillRect(cell.x, cell.y, cellScale, cellScale);
+			ctx.stroke();
+		},
+		updateFriends:function()
+			{
+			this.neighbors.forEach((container)=> 
+				{
+				container[0] = container[1].state;
+				container[2] = container[1].cancer;
+			});	
+		},
+		gameOfLife: function(cancerR)
+			{
+			let changeToGameOfCancer = false;	
+			let value = total(cell.neighbors.map(x=> x[0])); //the value is the last snapshot of the neighbor grid	
+			let rState = 0; 
+			let cancerCheck = total(cell.neighbors.map(x=>x[2]));
+			if(cell.state == 1) //alive rules
+				{
+				if(cancerCheck > 1)
+					{	
+					if(value <2)
+						{
+						changeToGameOfCancer = true;	
+					}
+				}	
+				rState = 1;	//staying alive
+				if(value > 3 || value <= 1)//unless overcrowded, or under-fed 
+					{
+					rState = 0;
+				}
+			}
+			else 
+				{	
+				if(value == 3)
+					{
+					rState = 1; //be alive only if 3 or more neighbors are alive
+
+				}
+				else if(cancerCheck == 2 )
+						{
+						changeToGameOfCancer = true;
+					}
+				
+		}
+		
+			if(changeToGameOfCancer)
+				{
+				cell.cancer = 1;
+			}
+			return rState;
+		},
+		gameOfCancer: function()
+			{
+			let value = total(cell.neighbors.map(x=> x[0])); //the value is the last snapshot of the neighbor grid		
+			let rCancerState = 0;
+			let stillCancer = false;
+			let cancerCheck = total(cell.neighbors.map(x=>x[2]));
+			if(value < cancerCheck)
+				{
+				stillCancer = true;
+			}
+			
+			if(stillCancer)
+				{
+				if(cell.cancerCount > 0)
+					{
+					rCancerState = 0;
+					cell.cancer = 0;
+				}
+				else
+					{	
+					rCancerState = 1;
+					cell.cancer = 1;
+				}
+			}
+			else
+				{	
+				cell.cancer = 0;
+				cell.canerCount = 0;
+			}
+			return rCancerState
+		},
+		setSeededCancer:function(seed)
+			{
+			if(cell.state ==1 )
+				{	
+				if(seed>Math.random())
+					{
+					cell.cancer = 1;
+					cell.draw();
+				}
+			}
+		}
+	}
+	return cell;
+}
+
+//main render enginel
+function Engine()
+	{
+	on = true;
+	let itteration = 0;	
+	const engine = window.setInterval(function()
+		{
+		gameBoard.stepForward();
+		itteration ++;	
+		if(saveImageFlag)
+			{			 	
+			let savedThisImage =  saveImage(itteration,savePath);
+			if(!savedThisImage || itteration >= gameBoard.saveCount)
+				{
+				on = false;
+			}
+		}
+		if(on == false)
+			{
+			window.clearInterval(engine);
+		}
+	},200)			
+}
+function StopEngine()
+	{
+	console.log('stopping');	
+	on = false;
+}
+
+
+
+//small helper calculations
+function* itteration()
+	{
+	let itter = 0;
+	yield itter;	
+	while (true)
+		{
+		itter++;
+		yield itter;
+	}
+}
 function Flat(array)
 	{
 	let holdBucket = [];
@@ -451,7 +461,6 @@ function Flat(array)
 	let flatttenedArray = [];
 	flatten(array, flatttenedArray);
 	return holdBucket;
-
 }
 function total(array)
 	{
@@ -473,115 +482,197 @@ function total(array)
 	}	
 	return y;
 }
- function randomNumber(min, max) 
+function randomNumber(min, max) 
  	{  
     min = Math.ceil(min); 
     max = Math.floor(max); 
     return Math.floor(Math.random() * (max - min + 1)) + min; 
 }  
-  let gameBoard = board(gameBoardHeight,gameBoardWidth);
 
-const engine = function()
+
+function workerDone(e)
 	{
 		
-};	
-const turnOn = document.createElement("button");
-turnOn.innerHTML = "click me to start";
-let on = false;
-let saveImageFlag = false;
-turnOn.addEventListener('click', function()
+		let updateCell = gameBoard.gameMatrix[e.data.index].find(x=>x.id === e.data.cell.idRefference);
+		updateCell.draw(e.data.cell.state);
+		updatecell.state = e.data.cell.state;
+	/*gameBoard.gameMarix[e.index] = e.array;
+	console.log("worker done");
+	runningWorkers--;
+	console.log("workers running still", runningWorkers);
+	workers[0].terminate();
+	workers.shift();*/
+
+}
+	
+
+
+//dom user input and ui elements
+function saveImage(count,path) 
 	{
-	on = true;
-	let itteration = 0;	
-	const engine = window.setInterval(function()
+	var canvasData = canvas.toDataURL("image/png");
+	let sendObject = 
 		{
-		gameBoard.stepForward();
-		itteration ++;	
-		if(saveImageFlag)
-			{			 	
-			let savedThisImage =  saveImage(itteration,savePath);
-			if(!savedThisImage || itteration >= gameBoard.saveCount)
-				{
-				on = false;
-			}
-		}
-		if(on == false)
+		imageData: canvasData,
+		filePath:path,
+		count:count
+	}	
+  var xmlHttpReq = false;
+
+  if (window.XMLHttpRequest) 
+  	{
+    ajax = new XMLHttpRequest();
+  }
+  else if (window.ActiveXObject) 
+  	{
+    ajax = new ActiveXObject("Microsoft.XMLHTTP");
+  }
+
+  ajax.open("POST", "saveimage.php", false);
+  ajax.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+  ajax.onreadystatechange = function() 	
+  	{
+  }
+  let save = false;
+  ajax.send("imageBitmap="+sendObject.imageData+"&count="+sendObject.count+"&filePath="+sendObject.filePath);
+  imageFlagMessagediv.innerHTML = "saved new image"+sendObject.count;
+  console.log("saving image");
+
+
+  	return true;
+}
+function createButton(html, fn)
+	{
+	console.log(fn);	
+	const button = document.createElement('button');
+	button.innerHTML = html;
+	button.addEventListener('click', function()
+		{
+		fn();
+
+	});
+	return button;
+}
+function setShapesToRandomLocations()
+	{
+	let	selectedShape = shapes[shapeSelector[shapeSelector.selectedIndex].getAttribute('data-shapeIndex')];
+	console.log(selectedShape);
+	gameBoard.createShape(selectedShape);
+}
+function createSelect(id, html, options)
+	{
+	const select = document.createElement('select');
+	select.setAttribute('id', id);
+	select.innerHTML = html;
+	options.forEach((option)=>
+		{
+		let optionE = document.createElement('option');
+		
+		let test = option.name;
+		console.log(test, "is test");
+		if(option.name != undefined)
 			{
-			window.clearInterval(engine);
-		}
-	},200)		
-});
+			console.log("option name exists")	
+			optionE.value = option.name;
+			optionE.innerHTML = option.name;	
+			optionE.setAttribute('data-shapeIndex', options.indexOf(option));
+			}
+			else
+				{
+				optionE.value = option;
+				optionE.innerHTML = option;
+			}
+
+		select.add(optionE);
+	});
+	select.selectedIndex = [0];
+	return select;
+}
+function createRandomShapes()
+	{
+	let count = document.getElementById('count').value;	
+		for(let i=0; i< count; i++)
+			{
+			let x = randomNumber(1, shapes.length);	
+			gameBoard.createShape(shapes[x]);
+	}
+}
 function toggle(bool)
 	{
 	if(bool){bool = false}
 	else{bool = true}
 		return bool;
 }
+function setImageFlag()
+	{
 
-const cancerOptions = [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1];
-const turnOff = createButton("PAUSE", function(){on=false;});
-const stepButton = createButton('STEP FORWARD', gameBoard.stepForward);
-const killCancerButton = createButton('KILL CANCER', gameBoard.killCancer);
-const setCancerButton = createButton("SET CANCER",function()
+	saveImageFlag = toggle(saveImageFlag);
+	imageSaveFlagDiv.setAttribute('data-saveImageState', saveImageFlag);
+}
+function getUserInputAndSetCancer()
 	{
 	let cancerInput = document.getElementById('cancerInput');
 	let cancerValue = cancerInput.value;
 	gameBoard.seedCancer(cancerValue);
 	gameBoard.canerRate = cancerValue;
-	});
-const wipeButton = createButton("WIPE BOARD", gameBoard.wipe);
-
-const saveImagesButton = createButton("START SAVING IMAGES", function()
+}
+function createInput(type, id, range)
 	{
-
-	toggle(saveImageFlag);
-});
-
-
-const cancerInput = document.createElement('select');
-	cancerInput.setAttribute('id', 'cancerInput');
-	cancerInput.innerHTML = "0.001";
-	cancerOptions.forEach((option)=>
+	const input = document.createElement('input');
+	input.setAttribute('type', type);
+	if(range)
 		{
-		let optionE = document.createElement('option');
-		optionE.value = option;
-		optionE.innerHTML = option;
-		cancerInput.add(optionE);
-	});
-
-let shapeSelector = document.createElement('select');
-	shapeSelector.setAttribute('id', 'shapeSelect');
-	shapeSelector.innerHTML = "SHAPE SELECTOR";
-	console.log(shapes);
-shapes.forEach((shape)=>
-	{
-	let option = document.createElement('option');
-	option.innerHTML = shape.name;
-	option.setAttribute('data-shape', shape);
-	option.setAttribute('data-shapeIndex', shapes.indexOf(shape));
-	shapeSelector.appendChild(option);
-});
-	shapeSelector.selectedIndex = [0];
-const shapeSelectorConfirmButton = createButton("SET THAT SHAPE TO A RANDOM LOCATION", function(){gameBoard.createShape(shapes[shapeSelector[shapeSelector.selectedIndex].getAttribute('data-shapeIndex')])});
-const randomShapeCount = document.createElement('input');
-	randomShapeCount.setAttribute('type', 'number');
-	randomShapeCount.setAttribute('range', "1-10");
-	randomShapeCount.value = 1;
-	randomShapeCount.setAttribute('id',"count"); 
-const randomShapesButton = createButton('CREATE RANDOM SHAPES', function()
-	{
-	let count = document.getElementById('count').value;	
-	for(let i=0; i< count; i++)
-		{
-		let x = randomNumber(1, shapes.length);	
-		gameBoard.createShape(shapes[x]);
+	input.setAttribute('range', range);
 	}
-});
+	input.value = 1;
+	input.setAttribute('id',id); 
+	return input;
 
+}
+
+
+
+//UI
+
+//dom element creation and stuff
+
+	//buttons
+const turnOn = createButton("START GAME ENGINE", Engine);
+const turnOff = createButton("STOP GAME ENGINE", StopEngine);
+const stepButton = createButton('STEP FORWARD', gameBoard.stepForward);
+const killCancerButton = createButton('KILL CANCER', gameBoard.killCancer);
+const setCancerButton = createButton("SET CANCER", getUserInputAndSetCancer);
+const wipeButton = createButton("WIPE BOARD", gameBoard.wipe);
+const saveImagesButton = createButton("START SAVING IMAGES", setImageFlag);
+const shapeSelectorConfirmButton = createButton("SET THAT SHAPE TO A RANDOM LOCATION", setShapesToRandomLocations);
+const randomShapesButton = createButton('CREATE RANDOM SHAPES',createRandomShapes);
+	//selects
+const cancerInput = createSelect("cancerInput", "0.001", cancerOptions);
+const shapeSelector = createSelect('shapeSelect',"SHAPE SELECTOR", shapes);
+	//inputs
+const randomShapeCount = createInput('number', "count", "1-10");
+
+
+
+	//divs and displays
 const body = document.getElementById("body");
 const controls = document.createElement('div');
-controls.setAttribute('id', 'controls');
+   	  controls.setAttribute('id', 'controls');
+
+const imageSaveFlagDiv = document.createElement('div');
+	  imageSaveFlagDiv.setAttribute('data-saveImageState', saveImageFlag);
+
+const imageFlagMessagediv = document.createElement('div');
+	  imageFlagMessagediv.innerHTML = "click that button to start saving images to the server";
+
+
+
+//dom element attaching stuff
+	 //source defined in artparser
+source.style.maxHeight = "40vh";
+source.style.overflow = "scroll";
 body.prepend(controls);
+
 controls.appendChild(turnOn);
 controls.appendChild(turnOff);
 controls.appendChild(stepButton);
@@ -593,6 +684,9 @@ controls.appendChild(shapeSelector);
 controls.appendChild(shapeSelectorConfirmButton);
 controls.appendChild(randomShapeCount);
 controls.appendChild(randomShapesButton);
-controls.appendChild(saveImagesButton);
+controls.appendChild(imageSaveFlagDiv);
+
+imageSaveFlagDiv.appendChild(imageFlagMessagediv);
+imageSaveFlagDiv.appendChild(saveImagesButton);
 </script>
 </body>
