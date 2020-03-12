@@ -6,15 +6,34 @@
 //rule 3 if you are alive and next to more than 3, die.
 //rule 4 if you are dead and next to Exactly 3, become alive.
 <style>
-	
-[data-saveimagestate = "true"]
+
+#randomShapesDiv
 	{
-	background: #00ff00;
+	display: flex;
+	flex-flow: column nowrap;
+	width:140px;
+}	
+[data-saveimagestate = "NOTSAVING"]
+	{
+	background: #000faf;
+	color: #fffafa;
 }
-[data-saveImageState = "false"]
+[data-saveImageState = "SAVING"]
+	{
+	background: #ff6600;
+}
+[data-saveImageState = "DONE"]
 	{
 	background: #0f96f0;
 }
+
+.button
+	{
+	height:80px;
+	width: 140px;
+
+}
+
 </style>
 <body id="body">
 <canvas id="canvas" class="canvas"></canvas>
@@ -32,12 +51,15 @@
 const canvas = document.querySelector('canvas');
 const ctx = canvas.getContext('2d');
 const savePath = "/images";
-
+const saveVideoPath ="/renders"
+//going up 1080 and 4k;
+const videoResolutions = [{height: 540, width:960},{height: 1080, width:1920},{height: 2160, width:3840}];
 let on = false;
-let saveImageFlag = false;
-const cellScale = 2;
-canvas.height = 1080;
-canvas.width = 1920;
+const saveImageFlags = ["NOTSAVING", "SAVING", "DONE"];
+let sIFlag = saveImageFlags[0];
+const cellScale = 10;
+canvas.height = videoResolutions[0].height;
+canvas.width =  videoResolutions[0].width;
 const gameBoardHeight = canvas.height / cellScale;
 const gameBoardWidth = canvas.width / cellScale;
 const itterator = itteration();
@@ -102,7 +124,8 @@ function board(height, width)
 		},
 		stepForward:function()
 			{
-/*			let workerPool = [];
+	/*
+		let workerPool = [];
     	
 			for(let i=0; i<b.gameMatrix.length;i++)
 				{
@@ -194,7 +217,7 @@ function board(height, width)
 		for(let j= 0; j < height; j++)
 			{	
 			let position = {x:i*cellScale,y:j*cellScale};
-			let gameCell = createCell(Math.random(), position,i,j, Math.random());
+			let gameCell = createCell(Math.random(), position,i,j);
 			gameCell.draw();
 			gameArray.push(gameCell);
 		}
@@ -239,18 +262,16 @@ function board(height, width)
 	})
 	return b;
 }
-function createCell(state, position, column, row, cancerRate)
+
+function createCell(state, position, column, row)
 	{
+		
 	let rState = 0	
 	if(state > 0.96)
 		{
 		rState = 1;	
 	}
-	let rCaner = 0;
-	if(cancerRate > 0.7704)
-		{
-		rCaner = 1;
-	}	
+
 	let cell = 
 		{	
 		state: rState,
@@ -259,15 +280,133 @@ function createCell(state, position, column, row, cancerRate)
 		y: position.y,
 		row: row,
 		column: column,
-		cancer:rCaner,
-		cancerCount:0,
+		cancer:0,
+		lifeCount:0,
+		lifeColor: "#000000",
+		stillDead: false,
+		colorClock: 
+			{	
+			r1: 15,
+			r2: 15,
+			b1: 15,
+			b2: 15,
+			g1: 15,
+			g2: 15
+		},
 		id: itterator.next().value,
+	
+		iterateColor: function()
+			{
+
+	//i want rainbows, well, I want a good color transition from white to black going the spectrum of the rainbow
+/*	Object.entries(cell.colorClock).forEach(([key, value]) => 
+    	{
+    	console.log(value);
+    	if(value > 0)	
+    		{
+    		value --;
+    	}
+ 
+    	else
+    		{
+    		value++;
+    	}
+	});*/
+			if(cell.colorClock.g2 > 0 && cell.colorClock.g1 >= cell.colorClock.g2)
+				{
+				cell.colorClock.g2--;
+			}
+			else if(cell.colorClock.g1 > 0 && cell.colorClock.g1 <= cell.colorClock.b2)
+				{
+				cell.colorClock.g1--;
+				cell.colorClock.g2 = 8;
+
+			}
+			else if(cell.colorClock.b2 > 0 && cell.colorClock.b2 <= cell.colorClock.b1)
+				{
+				cell.colorClock.b1--;
+				cell.colorClock.g1 = 8;
+
+			}	
+			else if(cell.colorClock.b1 > 0 && cell.colorClock.b1 <= cell.colorClock.r2)
+				{
+				cell.colorClock.b1--;
+				cell.colorClock.b2 = 8;
+
+			}
+			else if(cell.colorClock.r2 > 0 && cell.colorClock.r2 <= cell.colorClock.r1)
+				{
+				cell.colorClock.r1--;
+				cell.colorClock.b1 =8;
+			}
+			else if(cell.colorClock.r1 > 4)
+				{
+				cell.colorClock.r1--;
+				cell.colorClock.r2 = 8;
+			}			
+
+			
+			else
+				{
+				//here is where I would change to the game of cancer.
+			}
+			let rArray = [cell.colorClock.r1.toString(16),cell.colorClock.r2.toString(16),cell.colorClock.g1.toString(16),cell.colorClock.g2.toString(16),cell.colorClock.b1.toString(16),cell.colorClock.b2.toString(16)];
+			return rArray;
+		},
+		getNextColor:function()
+			{
+			let colorValues = cell.iterateColor();
+			let stringReturn = "#";
+			colorValues.forEach((colorVal)=>stringReturn+=colorVal);
+			return stringReturn;
+		},
+		resetClock:function()
+			{
+			cell.colorClock.g2=15;
+			cell.colorClock.g1=15;
+			cell.colorClock.b2=15;
+			cell.colorClock.b1=15;
+			cell.colorClock.r2=15;
+			cell.colorClock.r1=15;	
+		},
 		draw: function(what)
 			{
+			let drawNeeded = true;	
+			
 			if(what)
 				{
 				if(what == 1)
 					{
+					cell.state = 1;
+				}
+				else
+					{
+					cell.state = 0;
+				}
+			}	
+			if(cell.state == 1)
+				{
+				cell.lifeColor = cell.getNextColor();
+			}
+			else 
+				{
+				cell.lifeCount = 0;
+				cell.lifeColor = "#000000";
+				cell.resetClock();
+
+			}
+			if(drawNeeded)
+				{	
+				ctx.fillStyle = cell.lifeColor;		
+				ctx.fillRect(cell.x, cell.y, cellScale, cellScale);
+				ctx.stroke();
+			}
+
+			/*if(what)
+				{
+				if(what == 1)
+					{
+					if(cell.lifeColor == inLifeColor)	
 					ctx.fillStyle  = "#000000";
 					if(cell.cancer)
 						{
@@ -300,7 +439,13 @@ function createCell(state, position, column, row, cancerRate)
 						ctx.fillStyle = "#ff00f0";
 					}
 				}
-			}
+			if(drawNeeded)
+				{
+				ctx.fillStyle = CellColor;
+			}	*/
+
+
+			
 			ctx.fillRect(cell.x, cell.y, cellScale, cellScale);
 			ctx.stroke();
 		},
@@ -331,6 +476,7 @@ function createCell(state, position, column, row, cancerRate)
 				if(value > 3 || value <= 1)//unless overcrowded, or under-fed 
 					{
 					rState = 0;
+
 				}
 			}
 			else 
@@ -350,6 +496,15 @@ function createCell(state, position, column, row, cancerRate)
 			if(changeToGameOfCancer)
 				{
 				cell.cancer = 1;
+			}
+
+			if(rState != cell.state && rState == 0)
+				{
+				cell.wasntDead = true;
+			}
+			else
+				{
+				cell.wasntDead = false;
 			}
 			return rState;
 		},
@@ -398,7 +553,80 @@ function createCell(state, position, column, row, cancerRate)
 	}
 	return cell;
 }
+function CreateCellColorClock()
+	{
+	let colorClock =
+		{
+		r1: 15,
+		r2: 15,
+		b1: 15,
+		b2: 15,
+		g1: 15,
+		g2: 15,
+		iterateColor: function()
+			{
+			if(colorClock.g1 < 0)
+				{
+				colorClock.g1--
+			}
+			else if(colorClock.g2 < 0)
+				{
+				colorClock.g2--
+				colorClock.g1=15;
+			}
+			else if(colorClock.b1 < 0)
+				{
+				colorClock.b1--
+				colorClock.g2=15;
+				colorClock.g1=15;
+			}	
+			else if(colorClock.b2 < 0)
+				{
+				colorClock.b2--
+				colorClock.b1=15;
+				colorClock.g2=15;
+				colorClock.g1=15;
+			}
+			else if(colorClock.r1 >0)
+				{
+				colorClock.r1--
+				colorClock.b2=15;
+				colorClock.b1=15;
+				colorClock.g2=15;
+				colorClock.g1=15;
+			}		
+			else if(colorClock.r2 > 125)
+				{
+				colorClock.r2--;
+				colorClock.r1=15;
+				colorClock.b2=15;
+				colorClock.b1=15;
+				colorClock.g2=15;
+				colorClock.g1=15;
+				}
+				let rArray = [colorClock.r1.toString(16),colorClock.r2.toString(16),colorClock.g1.toString(16),colorClock.g2.toString(16),colorClock.b1.toString(16),colorClock.b2.toString(16)];
+				return rArray;
+			},
+			getNextColor:function()
+				{
+				let colorValues = colorClock.iterateColor();
+				let stringReturn = "#";
+				colorValues.forEach((colorVal)=>stringReturn+=colorVal);
+				return stringReturn;
+			},
+			resetClock:function()
+				{
+				colorClock.g2=0;
+				colorClock.g1=0;
+				colorClock.b2=0;
+				colorClock.b1=0;
+				colorClock.r2=0;
+				colorClock.r1=0;
+			}
+		}	
+	return colorClock;
 
+}
 //main render enginel
 function Engine()
 	{
@@ -408,16 +636,23 @@ function Engine()
 		{
 		gameBoard.stepForward();
 		itteration ++;	
-		if(saveImageFlag)
+		if(sIFlag == saveImageFlags[1])
 			{			 	
-			let savedThisImage =  saveImage(itteration,savePath);
-			if(!savedThisImage || itteration >= gameBoard.saveCount)
+			let savedThisImage =  saveImage(itteration,saveVideoPath);
+			if(!savedThisImage)
 				{
 				on = false;
+			}
+			if(itteration >= gameBoard.saveCount)
+				{
+				sIFlag = saveImageFlags[2];	
+				on = false;
+				renderVideo();
 			}
 		}
 		if(on == false)
 			{
+
 			window.clearInterval(engine);
 		}
 	},200)			
@@ -426,8 +661,20 @@ function StopEngine()
 	{
 	console.log('stopping');	
 	on = false;
+	sIFlag = saveImageFlags[0];
 }
+async function renderVideo()
+	{
+	let result = await fetch('createVideo.php', {method:"GET"});
+	if(result == true)	{
+		console.log("success");
 
+	}
+	else
+		{
+		console.log("fail");
+	}
+}
 
 
 //small helper calculations
@@ -488,7 +735,40 @@ function randomNumber(min, max)
     max = Math.floor(max); 
     return Math.floor(Math.random() * (max - min + 1)) + min; 
 }  
-
+function convertToHex(number)
+	{
+	let rNumberString = "";	
+		switch(number)
+			{
+			case number < 10:
+				rNumberString = number.toString();
+					break;
+			case 10:
+				rNumberString = "A"
+					break;
+			case 11:
+				rNumberString = "B"
+					break;
+			case 12:
+				rNumberString = "C"
+					break;
+			case 13:
+				rNumberString = "D"
+					break;
+			case 14:			
+				rNumberString = "E"
+					break;	
+			case 15:
+			rNumberString = "F"
+					break;
+		
+			default:
+				console.error("uncaught error?", number);
+		}
+		return rNumberString;
+	
+}
+	
 
 function workerDone(e)
 	{
@@ -541,11 +821,11 @@ function saveImage(count,path)
 
   	return true;
 }
-function createButton(html, fn)
+function createButton(html, style,fn)
 	{
-	console.log(fn);	
 	const button = document.createElement('button');
 	button.innerHTML = html;
+	button.setAttribute('class', "button "+style);
 	button.addEventListener('click', function()
 		{
 		fn();
@@ -569,10 +849,8 @@ function createSelect(id, html, options)
 		let optionE = document.createElement('option');
 		
 		let test = option.name;
-		console.log(test, "is test");
 		if(option.name != undefined)
 			{
-			console.log("option name exists")	
 			optionE.value = option.name;
 			optionE.innerHTML = option.name;	
 			optionE.setAttribute('data-shapeIndex', options.indexOf(option));
@@ -597,17 +875,36 @@ function createRandomShapes()
 			gameBoard.createShape(shapes[x]);
 	}
 }
-function toggle(bool)
+function triggle(threeStateStrings)
 	{
-	if(bool){bool = false}
-	else{bool = true}
-		return bool;
+		console.log("triggling", threeStateStrings);
+	if(threeStateStrings == saveImageFlags[0]) //if it's off then turn it on
+		{
+		console.log("is set to no")	;
+		threeStateStrings = saveImageFlags[1];
+		console.log("now tss is set to:", threeStateStrings, " from: ",saveImageFlags[1])
+	}
+	else if(threeStateStrings == saveImageFlags[1])
+	{
+		threeStateStrings = saveImageFlags[0]; // if it's on then turn it off
+	}
+	else if(threeStateStrings == saveImageFlags[2]) // if it's done then turn it on
+		{
+		threeStateStrings = saveImageFlags[1];
+	}
+	else 
+		{
+		threeStateStrings = saveImageFlags[0]; // just turn it off if there is ever an error
+		console.error("something amiss")
+	}
+	console.log("returning", threeStateStrings);
+	return threeStateStrings;
 }
 function setImageFlag()
 	{
 
-	saveImageFlag = toggle(saveImageFlag);
-	imageSaveFlagDiv.setAttribute('data-saveImageState', saveImageFlag);
+	sIFlag = triggle(sIFlag);
+	imageSaveFlagDiv.setAttribute('data-saveImageState', sIFlag);
 }
 function getUserInputAndSetCancer()
 	{
@@ -637,15 +934,15 @@ function createInput(type, id, range)
 //dom element creation and stuff
 
 	//buttons
-const turnOn = createButton("START GAME ENGINE", Engine);
-const turnOff = createButton("STOP GAME ENGINE", StopEngine);
-const stepButton = createButton('STEP FORWARD', gameBoard.stepForward);
-const killCancerButton = createButton('KILL CANCER', gameBoard.killCancer);
-const setCancerButton = createButton("SET CANCER", getUserInputAndSetCancer);
-const wipeButton = createButton("WIPE BOARD", gameBoard.wipe);
-const saveImagesButton = createButton("START SAVING IMAGES", setImageFlag);
-const shapeSelectorConfirmButton = createButton("SET THAT SHAPE TO A RANDOM LOCATION", setShapesToRandomLocations);
-const randomShapesButton = createButton('CREATE RANDOM SHAPES',createRandomShapes);
+const turnOn = createButton("START GAME ENGINE", "startBtn",Engine);
+const turnOff = createButton("STOP GAME ENGINE","stopBtn", StopEngine);
+const stepButton = createButton('STEP FORWARD', "stepBtn",gameBoard.stepForward);
+const killCancerButton = createButton('KILL CANCER',"KCBtn", gameBoard.killCancer);
+const setCancerButton = createButton("SET CANCER", "SCBtn",getUserInputAndSetCancer);
+const wipeButton = createButton("WIPE BOARD", "wipeBtn",gameBoard.wipe);
+const saveImagesButton = createButton("START SAVING IMAGES", "ImageBtn",setImageFlag);
+const shapeSelectorConfirmButton = createButton("SET THAT SHAPE TO A RANDOM LOCATION", "shapeSetBtn",setShapesToRandomLocations);
+const randomShapesButton = createButton('CREATE RANDOM SHAPES',"rShapeSetBtn",createRandomShapes);
 	//selects
 const cancerInput = createSelect("cancerInput", "0.001", cancerOptions);
 const shapeSelector = createSelect('shapeSelect',"SHAPE SELECTOR", shapes);
@@ -658,15 +955,19 @@ const randomShapeCount = createInput('number', "count", "1-10");
 const body = document.getElementById("body");
 const controls = document.createElement('div');
    	  controls.setAttribute('id', 'controls');
+   	  controls.setAttribute('class', 'controls');
 
 const imageSaveFlagDiv = document.createElement('div');
-	  imageSaveFlagDiv.setAttribute('data-saveImageState', saveImageFlag);
+	  imageSaveFlagDiv.setAttribute('data-saveImageState', sIFlag);
+	  imageSaveFlagDiv.setAttribute('id', 'saveImageDiv')
 
 const imageFlagMessagediv = document.createElement('div');
+	  imageFlagMessagediv.setAttribute('id',"imageMessageDiv");
 	  imageFlagMessagediv.innerHTML = "click that button to start saving images to the server";
 
-
-
+const randomShapesDiv =  document.createElement('div');
+	  randomShapesDiv.setAttribute('id',"randomShapesDiv");
+	  randomShapesDiv.innerHTML = "Create that number of random shapes:";
 //dom element attaching stuff
 	 //source defined in artparser
 source.style.maxHeight = "40vh";
@@ -682,8 +983,11 @@ controls.appendChild(setCancerButton);
 controls.appendChild(killCancerButton);
 controls.appendChild(shapeSelector);
 controls.appendChild(shapeSelectorConfirmButton);
-controls.appendChild(randomShapeCount);
-controls.appendChild(randomShapesButton);
+
+controls.appendChild(randomShapesDiv);
+
+randomShapesDiv.appendChild(randomShapeCount);
+randomShapesDiv.appendChild(randomShapesButton);
 controls.appendChild(imageSaveFlagDiv);
 
 imageSaveFlagDiv.appendChild(imageFlagMessagediv);
