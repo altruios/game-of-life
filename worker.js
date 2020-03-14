@@ -8,9 +8,10 @@ this.onmessage = function(e)
    e.data.array.forEach((cell) => 
 		{
 		cell.state = gameOfLife(cell);
-		this.postMessage({cell:cell, index:e.data.index});
 
 	});
+   		this.postMessage({array:e.data.array, index:e.data.index});
+
 };
 
 function gameOfLife(cell)

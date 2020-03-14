@@ -61,12 +61,18 @@
 	}
 	#saveImageDiv
 		{
-				display: flex;
-						flex-flow: column nowrap;
+		display: flex;
+		flex-flow: column nowrap;
 		width:240px;	
 
 	
 		}
+	#renderControls
+		{
+		display:flex;
+		flex-flow:row nowrap;
+
+	}
 	[data-saveimagestate = "NOTSAVING"]
 		{
 		background: #000faf;
@@ -112,20 +118,20 @@ let saveVideoPath ="/renders";
 const noData = {type:"noData",data:"noData"};
 
 //going up 1080 and 4k;
-const videoResolutions = [{height: 540, width:960},{height: 1080, width:1920},{height: 2160, width:3840}];
+const videoResolutions = [{name: "test", height: 540, width:960},{name:"1080", height: 1080, width:1920},{name:"4k", height: 2160, width:3840}];
 let on = false;
 const saveImageFlags = ["NOTSAVING", "SAVING", "DONE"];
 let sIFlag = saveImageFlags[0];
-const cellScale = 20;
+let cellScale = 20;
 canvas.height = videoResolutions[0].height;
 canvas.width =  videoResolutions[0].width;
-const gameBoardHeight = canvas.height / cellScale;
-const gameBoardWidth = canvas.width / cellScale;
+let gameBoardHeight = canvas.height / cellScale;
+let gameBoardWidth = canvas.width / cellScale;
 const itterator = itteration();
 const gameBoard = board(gameBoardHeight,gameBoardWidth);
 const cancerOptions = [0.1,0.5,1];
 const workerLimit = 7;
-
+const workerPool = [];
 //game board
 function board(height, width)
 	{
@@ -134,54 +140,20 @@ function board(height, width)
 		gameMatrix: [],
 		cancerRate:0,
 		saveCount:9999,
+
 		wipe:function()
 			{
-			ctx.fillStyle  = "#ffffff";
-			ctx.fillRect(0,0, height*cellScale, width*cellScale);
 			b.gameMatrix.forEach((cellArray)=>
 				{
 				cellArray.forEach((cell)=> 
 					{
-					cell.state=0;
+					cell.state = 0;
 					cell.neighbors.forEach(x=>x[0] = 0);
-					cell.draw(0);
-				});
-			});
-		},
-		wipeToBlack:function()
-			{
-			b.gameMatrix.forEach((cellArray)=>
-				{
-				cellArray.forEach((cell)=> 
-					{
-					cell.state=0;
-					cell.stillDead=true;
-					cell.neighbors.forEach(x=>x[0] = 0);
+					cell.drawThisColor("#000000");
 					cell.setClockToZero();
-					cell.draw(0);
 
 				});
 			});
-		},
-
-		createGlider:function()
-			{
-			let randCol = Math.floor(Math.min(Math.random()*b.gameMatrix.length, b.gameMatrix.length-20));	
-			let randRow = Math.floor(Math.min(Math.random()*b.gameMatrix[randCol].length, b.gameMatrix[randCol].length-20));	
-
-			let glider = [
-				b.gameMatrix[randCol][randRow],
-				b.gameMatrix[randCol+1][randRow],
-				b.gameMatrix[randCol-1][randRow],
-				b.gameMatrix[randCol+1][randRow-1],
-				b.gameMatrix[randCol][randRow-2]
-			]
-			glider.forEach((x)=>
-				{
-				x.state = 1;
-				x.draw(1);
-			});
-			b.updateState();
 		},
 		createShape:function(shape)
 			{
@@ -194,6 +166,7 @@ function board(height, width)
 				{
 				x.state = 1;
 				x.stillDead=false;
+				x.burried = false;
 				x.resetClock();
 				x.draw(1);
 			});
@@ -202,12 +175,12 @@ function board(height, width)
 		},
 		stepForward:function()
 			{
-			/*
-				let workerPool = [];
-		    	
+			
+				
+		  /*  	
 					for(let i=0; i<b.gameMatrix.length;i++)
 						{
-						if(workerPool >= workerLimit)
+						if(workerPool.length >= workerLimit)
 							{
 							console.log('waiting at that index');
 							window.setTimeout(function(){},110);	
@@ -219,16 +192,18 @@ function board(height, width)
 								{ 
 								state:x.state,	
 								neighbors:x.neighbors.map(y=>y[0]),
-								idRefference:x.id
+								id:x.id
 							})); 
 
 							let worker = new Worker('worker.js');
 							worker.onmessage = workerDone;
+							worker.finished = false;
+							worker.ID = i;
 							workerPool.push(worker);
 		   		 			workerPool[i].postMessage({index:i,array:sendArray});
 		   		 	}
 		   		 }*/
-						//that fires off the first messenger. which 
+				//that fires off the first messenger. which 
 
 				//worker pattern not working
 	
@@ -237,16 +212,23 @@ function board(height, width)
 				cellArray.forEach((cell) => 
 					{
 					if(!cell.cancer)
-						{	
-						cell.state = cell.gameOfLife();
-					}
-					else
-						{
-						cell.state = cell.gameOfCancer();
-					};
+							{	
+							cell.state = cell.gameOfLife();
+						}
+						else
+							{
+							cell.state = cell.gameOfCancer();
+						};
 					cell.draw(cell.state);
 				});
 			});
+
+
+
+
+
+
+
 			//now we get the next values after we created a new state
 
 			b.gameMatrix.forEach((cellArray)=>
@@ -285,60 +267,88 @@ function board(height, width)
 			{
 			b.gameMatrix.forEach(cellArray=>cellArray.forEach(cell=>cell.updateFriends()));
 
-		}
+		},
+		changeResolution:function (newRes, newScale)
+			{
+			canvas.height = newRes.height;
+			canvas.width =  newRes.width;
+			b.height = canvas.height / newScale;
+			b.width = canvas.width / newScale;
+			cellScale = newScale;
+			return b.refreshBoard();
+			 
+		},
+		refreshBoard:function(newRes)
+			{
+			console.log("losing old matrix");	
+			b.gameMatrix.length = 0;
+			console.log(b.gameMatrix);
 
-	}
+			return b.createSelf(true);
+		},
+		createSelf:function(newDimensions)
+			{
+			b.gameMatrix.length = 0; //reset to nothing	
+			if(newDimensions)
+				{
+				height = b.height;
+				width = b.width;
+			}
+			for(let i = 0; i < width; i++)
+				{
+				let gameArray = [];	
+				for(let j= 0; j < height; j++)
+					{	
+					let position = {x:i*cellScale,y:j*cellScale};
+					let gameCell = createCell(Math.random(), position,i,j);
+					gameCell.draw(gameCell.state);
+					gameArray.push(gameCell);
+				}
+				b.gameMatrix.push(gameArray);	
+			}
+			b.gameMatrix.forEach((cellArray)=>
+				{
+				cellArray.forEach((cell)=>
+					{	
+					let adjacent = [];	
+					if(cell.column > 0)
+						{
+						adjacent.push(b.gameMatrix[cell.column-1].filter(c=>c.row == cell.row-1 ||c.row ==cell.row || c.row == cell.row+1));
+					}
+					let nextIndexColumn = cell.column+1;
+					let nextColumn = b.gameMatrix[nextIndexColumn];
+					if(nextColumn)
+						{
+						adjacent.push(nextColumn.filter(c=>c.row == cell.row ||c.row ==cell.row+1 || c.row==cell.row-1));
+					}
+					let downNeighbor = cellArray[cell.row+1];
+					let upNeigbor = cellArray[cell.row-1];
+					if(upNeigbor)
+						{
+						adjacent.push(upNeigbor);
+					}
+					if(downNeighbor)
+						{
+						adjacent.push(downNeighbor);
+					}
+					adjacent = Flat(adjacent);
+					let neightbors = adjacent.map((x)=> 
+						{ 
+						let lastState = x.state;
+						let lastCancer = x.cancer;
+						let container = [lastState	, x, lastCancer];
+						return container;
 
-	for(let i = 0; i < width; i++)
-		{
-		let gameArray = [];	
-		for(let j= 0; j < height; j++)
-			{	
-			let position = {x:i*cellScale,y:j*cellScale};
-			let gameCell = createCell(Math.random(), position,i,j);
-			gameCell.draw();
-			gameArray.push(gameCell);
-		}
-		b.gameMatrix.push(gameArray);	
-	}
-	b.gameMatrix.forEach((cellArray)=>
-		{
-		cellArray.forEach((cell)=>
-			{	
-			let adjacent = [];	
-			if(cell.column > 0)
-				{
-				adjacent.push(b.gameMatrix[cell.column-1].filter(c=>c.row == cell.row-1 ||c.row ==cell.row || c.row == cell.row+1));
-			}
-			let nextIndexColumn = cell.column+1;
-			let nextColumn = b.gameMatrix[nextIndexColumn];
-			if(nextColumn)
-				{
-				adjacent.push(nextColumn.filter(c=>c.row == cell.row ||c.row ==cell.row+1 || c.row==cell.row-1));
-			}
-			let downNeighbor = cellArray[cell.row+1];
-			let upNeigbor = cellArray[cell.row-1];
-			if(upNeigbor)
-				{
-				adjacent.push(upNeigbor);
-			}
-			if(downNeighbor)
-				{
-				adjacent.push(downNeighbor);
-			}
-			adjacent = Flat(adjacent);
-			let neightbors = adjacent.map((x)=> { 
-
-				let lastState = x.state;
-				let lastCancer = x.cancer;
-				let container = [lastState	, x, lastCancer];
-				return container;
-
+					});
+					neightbors.forEach(neightbor=> cell.neighbors.push(neightbor));
+				});
 			});
-			neightbors.forEach(neightbor=> cell.neighbors.push(neightbor));
-		});
-	})
-	return b;
+			return b;
+		}
+
+	}
+	return b.createSelf();
+	
 }
 
 function createCell(state, position, column, row)
@@ -362,6 +372,7 @@ function createCell(state, position, column, row)
 		lifeCount:0,
 		lifeColor: "#000000",
 		stillDead: false,
+		burried: false,
 		colorClock: 
 			{	
 			r1: 15,
@@ -375,8 +386,8 @@ function createCell(state, position, column, row)
 	
 		iterateColor: function(state)
 			{
-			if(state ==1)
-					{
+			if(state == 1)
+				{
 
 				if(cell.colorClock.g2 > 0 && cell.colorClock.g1 >= cell.colorClock.g2)
 					{
@@ -425,7 +436,7 @@ function createCell(state, position, column, row)
 				cell.colorClock.g2=0;
 				cell.colorClock.r1=0;	
 				cell.colorClock.r2=0;
-				if(cell.colorClock.b2 > 0 && cell.colorClock.b2 <= cell.colorClock.b1)
+				if(cell.colorClock.b2 > 0 && cell.colorClock.b2 >= cell.colorClock.b1)
 					{
 					cell.colorClock.b2--;
 					if(cell.colorClock.b2 >0){cell.colorClock.b2--}
@@ -472,47 +483,70 @@ function createCell(state, position, column, row)
 		draw: function(what)
 			{
 			let drawNeeded = true;	
-			
-			if(what)
-				{
-				if(what == 1)
-					{
-					cell.state = 1;
-				}
-				else
-					{
-					cell.state = 0;
-				}
-			}	
-			if(cell.state == 1)
-				{
-				if(cell.stillDead) //if you just became alive
-					{
-					cell.resetClock();	//set to full color
-					cell.stillDead = false; //then go to else
-				}
-				else
-					{	
-					cell.lifeColor = cell.getNextColor(1); //wind down color
-				}
+			if(cell.state == 0 && cell.colorClock.b2 == 0 && cell.colorClock.b1 ==0 )
+				{	
+				drawNeeded = false;
+				cell.burried = true;
 			}
-			else //if you are dead
+			else if(cell.state == 1 && cell.colorClock.r1 == 0 && cell.colorClock.r2 == 4)
 				{
-				if(cell.stillDead)//and have been dead
-					{	
-					cell.lifeColor = cell.getNextColor(0); // wind down color blue stying
-				}
-				else //if you just died
-					{
-					cell.lifeCount = 0;
-					cell.lifeColor = "#0000ff";
-					cell.resetClock();
-					cell.stillDead = true;
-				}
+				drawNeeded = false;
+			}
+			else
+				{
 
+
+				if(what)
+					{
+					if(what == 1)
+						{
+						cell.state = 1;
+					}
+					else
+						{
+						cell.state = 0;
+					}
+				}	
+				if(cell.state == 1)
+					{
+					if(cell.stillDead) //if you just became alive
+						{
+						cell.resetClock();	//set to full color
+						cell.stillDead = false; //then go to else
+						cell.lifeColor = cell.getNextColor(1);
+					}
+					else
+						{	
+						cell.lifeColor = cell.getNextColor(1); //wind down color
+					}
+				}
+				else //if you are dead
+					{
+					if(cell.stillDead)//and have been dead
+						{	
+						if(drawNeeded == false)
+							{
+							console.log(burried);	
+							cell.burried = true;
+						}
+						else
+							{
+							cell.lifeColor = cell.getNextColor(0); // wind down color blue stying
+						}
+					}
+					else //if you just died
+						{
+						cell.lifeCount = 0;
+						cell.lifeColor = "#0000ff";
+						cell.resetClock();
+						cell.stillDead = true;
+					}
+
+				}
 			}
 			if(drawNeeded)
-				{	
+				{
+
 				ctx.fillStyle = cell.lifeColor;		
 				ctx.fillRect(cell.x, cell.y, cellScale, cellScale);
 				ctx.stroke();
@@ -561,9 +595,13 @@ function createCell(state, position, column, row)
 			}	*/
 
 
-			
+		},
+		drawThisColor:function(color)
+			{
+			cell.lifeColor = color;
+			ctx.fillStyle = cell.lifeColor;		
 			ctx.fillRect(cell.x, cell.y, cellScale, cellScale);
-			ctx.stroke();
+			ctx.stroke();		
 		},
 		updateFriends:function()
 			{
@@ -607,7 +645,7 @@ function createCell(state, position, column, row)
 						changeToGameOfCancer = true;
 					}
 				
-		}
+			}
 		
 			if(changeToGameOfCancer)
 				{
@@ -683,7 +721,7 @@ function Engine()
 		if(sIFlag == saveImageFlags[1])
 			{
 			
-			let savedThisImage =  saveImage(itteration,savePath);
+			let savedThisImage =  saveImage(itteration,saveVideoPath);
 			if(!savedThisImage)
 				{
 				on = false;
@@ -817,22 +855,48 @@ function convertToHex(number)
 	
 }
 	
-
-function workerDone(e)
+/*
+function workerDone(e) // e is the return array
 	{
-		
-		let updateCell = gameBoard.gameMatrix[e.data.index].find(x=>x.id === e.data.cell.idRefference);
-		updateCell.draw(e.data.cell.state);
-		updatecell.state = e.data.cell.state;
+	console.log(e.data);
+	console.log("data is:");	
+	let changedItems = e.data.array;
+	let targetArray = gameBoard.gameMatrix[e.data.index];
+
+	console.log("target array is:",targetArray, "index:",e.data.index );
+	changedItems.forEach((item)=> 
+		{
+		let gameUpdate =  targetArray.find(x=>x.id===item.id);
+		console.log("game array update item:",gameUpdate);
+		if(gameUpdate == undefined)
+			{
+			console.error(item, "could not find");
+		}
+		else
+			{
+			gameUpdate.state = item.state;
+	}
+
+	});
+	console.log("before",workerPool.length);
+	
+	let retiredWorker = workerPool.find(x=>x.id == e.id);
+	let rWorkersIndex = workerPool.indexOf(retiredWorker);
+	workerPool.splice(1,rWorkersIndex);
+
+	console.log("after",workerPool.length);
+
+
+
 	/*gameBoard.gameMarix[e.index] = e.array;
 	console.log("worker done");
 	runningWorkers--;
 	console.log("workers running still", runningWorkers);
 	workers[0].terminate();
-	workers.shift();*/
+	workers.shift();
 
-}
-	
+}*/
+
 
 
 //dom user input and ui elements
@@ -883,7 +947,7 @@ function createButton(html, style,fn)
 }
 function setShapesToRandomLocations()
 	{
-	let	selectedShape = shapes[shapeSelector[shapeSelector.selectedIndex].getAttribute('data-shapeIndex')];
+	let	selectedShape = shapes[shapeSelector[shapeSelector.selectedIndex].getAttribute('data-Index')];
 	console.log(selectedShape);
 	gameBoard.createShape(selectedShape);
 }
@@ -901,7 +965,7 @@ function createSelect(id, html, options)
 			{
 			optionE.value = option.name;
 			optionE.innerHTML = option.name;	
-			optionE.setAttribute('data-shapeIndex', options.indexOf(option));
+			optionE.setAttribute('data-Index', options.indexOf(option));
 			}
 			else
 				{
@@ -946,7 +1010,15 @@ function triggle(threeStateStrings)
 		console.error("something amiss")
 	}
 	console.log("returning", threeStateStrings);
-	return threeStateStrings;
+	return threeStateStrings; //like toggle but with three states.
+}
+function setResolution()
+	{
+	let selectedResolution = videoResolutions[resolutionSelector[resolutionSelector.selectedIndex].getAttribute('data-Index')];
+	console.log(selectedResolution);
+	let scaleInput = document.getElementById('scaleInput');
+	let scaleVale = scaleInput.value;
+	gameBoard.changeResolution(selectedResolution, scaleVale);
 }
 function setImageFlag()
 	{
@@ -997,15 +1069,15 @@ const wipeButton = createButton("WIPE BOARD", "wipeBtn",gameBoard.wipe);
 const saveImagesButton = createButton("START SAVING IMAGES", "ImageBtn",setImageFlag);
 const shapeSelectorConfirmButton = createButton("SET SHAPE", "shapeSetBtn",setShapesToRandomLocations);
 const randomShapesButton = createButton('CREATE RANDOM SHAPES',"rShapeSetBtn",createRandomShapes);
-const deadAndBurriedButton = createButton("DEAD AND BURRIED", "deadAndBurriedButton", gameBoard.wipeToBlack);
-
+const resolutionChangeButton = createButton("CHANGE RESOLUTION", "resolutionBtn", setResolution);
 
 	//selects
 const cancerInput = createSelect("cancerInput", "0.001", cancerOptions);
 const shapeSelector = createSelect('shapeSelect',"SHAPE SELECTOR", shapes);
+const resolutionSelector = createSelect('resolutionSelector', "RESOLUTION", videoResolutions);
 	//inputs
 const randomShapeCount = createInput('number', "count", "1-10");
-
+const scaleInput = createInput('number', 'scaleInput', '1-10');
 //divs and displays
 
 const body = document.getElementById("body");
@@ -1020,21 +1092,27 @@ const engineDiv = createElement('div', "engineDiv","engineDiv", {type:"engine",d
 const lifeControls = createElement('div', "lifeControls","lifeControls", noData, "the game of life: general controls");
 const cancerControls = createElement('div', "cancerControls","cancerControls", noData, "the game of cancer: general controls (work in progress, not interesting yet)");
 const gameControls = createElement('div', "gameControls","gameControls", noData, "");
+const renderControls = createElement('div', "renderControls", "renderControls", noData, "");
 //dom element attaching stuff
 	 //source defined in artparser
 source.style.maxHeight = "40vh";
 source.style.overflow = "scroll";
 body.prepend(controls);
+controls.appendChild(renderControls);
+					renderControls.appendChild(engineDiv);
+										engineDiv.appendChild(turnOn);
+										engineDiv.appendChild(turnOff);
+										engineDiv.appendChild(stepButton);
+										engineDiv.appendChild(resolutionSelector);
+										engineDiv.appendChild(resolutionChangeButton);
+										engineDiv.appendChild(scaleInput);
 
-controls.appendChild(engineDiv);
-					engineDiv.appendChild(turnOn);
-					engineDiv.appendChild(turnOff);
-					engineDiv.appendChild(stepButton);
-
+					renderControls.appendChild(imageSaveFlagDiv);
+												imageSaveFlagDiv.appendChild(imageFlagMessagediv);
+												imageSaveFlagDiv.appendChild(saveImagesButton);				
 controls.appendChild(gameControls);
 					gameControls.appendChild(lifeControls);
 											lifeControls.appendChild(wipeButton);
-											lifeControls.appendChild(deadAndBurriedButton);
 											//	lifeControls.appendChild(seedRandom); will add this soon
 					gameControls.appendChild(chosenShapeDiv);
 											chosenShapeDiv.appendChild(shapeSelector);
@@ -1043,6 +1121,7 @@ controls.appendChild(gameControls);
 					gameControls.appendChild(randomShapesDiv);
 											randomShapesDiv.appendChild(randomShapeCount);
 											randomShapesDiv.appendChild(randomShapesButton);
+
 					gameControls.appendChild(cancerControls);
 											cancerControls.appendChild(cancerInput);
 											cancerControls.appendChild(setCancerButton);
@@ -1051,8 +1130,5 @@ controls.appendChild(gameControls);
 
 
 
-controls.appendChild(imageSaveFlagDiv);
-					imageSaveFlagDiv.appendChild(imageFlagMessagediv);
-					imageSaveFlagDiv.appendChild(saveImagesButton);
 </script>
 </body>
