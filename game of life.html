@@ -155,13 +155,33 @@ function board(height, width)
 				});
 			});
 		},
-		createShape:function(shape)
+		setShapeCenter: function(shape)
 			{
+			let centerShape = shape.bounds;	
+			let centerCol = Math.floor(b.gameMatrix.length/2);
+			let centerRow = Math.floor(b.gameMatrix[0].length/2);
+			let offsetRow = Math.floor(centerRow - (centerShape.horizontal/2));
+			let offsetCol = Math.floor(centerCol -(centerShape.vertical/2));
+			console.log(centerShape.vertical);
+			b.createShape(shape, offsetCol, offsetRow);
 
+
+		},
+		writeName:function(shape)
+			{
+			ctx.fillStyle = "#00ff00";
+			ctx.fillText("name: "+shape.name+" author:"+shape.author+" year:"+shape.year, gameBoardHeight, gameBoardWidth);
+		},
+		setShapeRandom:function(shape)
+			{
 			let randCol = randomNumber(shape.bounds.vertical ,b.gameMatrix.length-shape.bounds.vertical);	
 			let randRow = randomNumber(shape.bounds.horizontal, b.gameMatrix[randCol].length-shape.bounds.horizontal);
+			b.createShape(shape, randCol, randRow);
+		},
+		createShape:function(shape, col, row)
+			{
 			shape.imprints.length = 0;
-			shape.imprintOnGrid(randCol,randRow);
+			shape.imprintOnGrid(col,row);
 			shape.imprints.forEach((x)=>
 				{
 				x.state = 1;
@@ -709,19 +729,27 @@ function createCell(state, position, column, row)
 }
 
 //main render enginel
-function Engine()
+function Engine(lastImageNumber, shape)
 	{
 	on = true;
 	engineDiv.setAttribute("data-engine", on);
 	let itteration = 0;	
+	if(lastImageNumber)
+		{
+		itteration = lastImageNumber;
+	}
 	const engine = window.setInterval(function()
 		{
 		gameBoard.stepForward();
+
 		itteration ++;	
 		if(sIFlag == saveImageFlags[1])
 			{
-			
-			let savedThisImage =  saveImage(itteration,saveVideoPath);
+			if(shape)
+				{
+				gameBoard.writeName(shape);
+			}
+			let savedThisImage =  saveImage(itteration,savePath);
 			if(!savedThisImage)
 				{
 				on = false;
@@ -741,7 +769,8 @@ function Engine()
 			engineDiv.setAttribute("data-engine", on);
 			window.clearInterval(engine);
 		}
-	},200)			
+	},200)		
+	return true;	
 }
 function StopEngine()
 	{
@@ -854,7 +883,7 @@ function convertToHex(number)
 		return rNumberString;
 	
 }
-	
+
 /*
 function workerDone(e) // e is the return array
 	{
@@ -949,7 +978,15 @@ function setShapesToRandomLocations()
 	{
 	let	selectedShape = shapes[shapeSelector[shapeSelector.selectedIndex].getAttribute('data-Index')];
 	console.log(selectedShape);
-	gameBoard.createShape(selectedShape);
+	gameBoard.setShapeRandom(selectedShape);
+}
+function setShapeTocenter()
+	{
+	{
+	let	selectedShape = shapes[shapeSelector[shapeSelector.selectedIndex].getAttribute('data-Index')];
+	console.log(selectedShape);
+	gameBoard.setShapeCenter(selectedShape);
+}
 }
 function createSelect(id, html, options)
 	{
@@ -1067,9 +1104,14 @@ const killCancerButton = createButton('KILL CANCER',"KCBtn", gameBoard.killCance
 const setCancerButton = createButton("SET CANCER", "SCBtn",getUserInputAndSetCancer);
 const wipeButton = createButton("WIPE BOARD", "wipeBtn",gameBoard.wipe);
 const saveImagesButton = createButton("START SAVING IMAGES", "ImageBtn",setImageFlag);
-const shapeSelectorConfirmButton = createButton("SET SHAPE", "shapeSetBtn",setShapesToRandomLocations);
+const shapeSelectorConfirmButtonR = createButton("SET SHAPE TO RANDOM LOCATION", "shapeSetBtn",setShapesToRandomLocations);
+
+const shapeSelectorConfirmButtonC = createButton("SET SHAPE TO CENTER", "shapeSetBtn",setShapeTocenter);
+
 const randomShapesButton = createButton('CREATE RANDOM SHAPES',"rShapeSetBtn",createRandomShapes);
 const resolutionChangeButton = createButton("CHANGE RESOLUTION", "resolutionBtn", setResolution);
+
+
 
 	//selects
 const cancerInput = createSelect("cancerInput", "0.001", cancerOptions);
@@ -1106,7 +1148,6 @@ controls.appendChild(renderControls);
 										engineDiv.appendChild(resolutionSelector);
 										engineDiv.appendChild(resolutionChangeButton);
 										engineDiv.appendChild(scaleInput);
-
 					renderControls.appendChild(imageSaveFlagDiv);
 												imageSaveFlagDiv.appendChild(imageFlagMessagediv);
 												imageSaveFlagDiv.appendChild(saveImagesButton);				
@@ -1116,7 +1157,9 @@ controls.appendChild(gameControls);
 											//	lifeControls.appendChild(seedRandom); will add this soon
 					gameControls.appendChild(chosenShapeDiv);
 											chosenShapeDiv.appendChild(shapeSelector);
-											chosenShapeDiv.appendChild(shapeSelectorConfirmButton);
+											chosenShapeDiv.appendChild(shapeSelectorConfirmButtonR);
+											chosenShapeDiv.appendChild(shapeSelectorConfirmButtonC);
+
 
 					gameControls.appendChild(randomShapesDiv);
 											randomShapesDiv.appendChild(randomShapeCount);

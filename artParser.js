@@ -5,7 +5,7 @@ ajax.send();
 const source = document.getElementById('source')
 	source.innerHTML += ajax.responseText;
 
-//input is:
+/*//input is:
 	let scrappedShapes = [];
 	let nameList = document.querySelectorAll('a[name]');
 	let shapeList = document.querySelectorAll('pre');
@@ -24,6 +24,43 @@ const source = document.getElementById('source')
 }
 const shapes = [];
 scrappedShapes.forEach(scrappedShape=>shapes.push(readInput(scrappedShape)));
+
+*/
+
+
+
+//input is:
+	let shapeList = document.querySelectorAll('pre');
+	let parsedShapes = [];
+	shapeList.forEach((shape)=>
+		{
+
+		let pattern = shape.innerText;	
+		let name = shape.getAttribute('data-name');
+		let author = shape.getAttribute('data-author');
+		let year = shape.getAttribute('data-year');
+		let object = [];
+		if(name != undefined)
+			{
+			object.name = name;
+		}
+		if(author != undefined)
+			{
+			object.author = author;
+		}
+		if(year != undefined)
+			{
+			object.year = year;
+		}
+		object.pattern = pattern;
+		parsedShapes.push(object);
+	});
+
+const shapes = [];
+parsedShapes.forEach(parsedShapes=>shapes.push(readInput(parsedShapes)));
+
+console.log(shapes);
+shapes.forEach(shape=>console.log("shape name",shape.name,shape));	
 
 //so this parses html files of just a shape stored in this format -- eventually
 //in the mean time - just doing it manually.
