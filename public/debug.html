@@ -1,0 +1,155 @@
+
+<html>
+<script>
+	const state = 0;
+const drawBool = 1; //not in use
+const StateChangeBool= 2;
+const itteration1=3;
+const itteration2=4;
+const itteration3=5;
+const itteration4=6;
+const itteration5 = 7;
+const itterationMask = 248 ; //11111000 in binary - a mask;
+
+const rainBowColoring = [
+	{a:255,r:255,g:255,b:255},
+	{a:255,r:255,g:255,b:255},
+	{a:255,r:139,g:20,b:255},
+	{a:255,r:100,g:30,b:150},
+	{a:255,r:46,g:43,b:95},
+	{a:255,r:26,g:30,b:160},
+	{a:255,r:10,g:24,b:235},
+	{a:255,r:15,g:130,b:138},
+	{a:255,r:20,g:235,b:40},
+	{a:255,r:145,g:245,b:35},
+	{a:255,r:255,g:255,b:30},
+	{a:255,r:255,g:197,b:20},
+	{a:255,r:255,g:127,b:10},
+	{a:255,r:255,g:90,b:5},
+	{a:255,r:255,g:0,b:0},
+	{a:255,r:128,g:0,b:0},
+	{a:255,r:128,g:0,b:0},
+	{a:255,r:255,g:0,b:0},
+	{a:255,r:255,g:90,b:5},
+	{a:255,r:255,g:127,b:10},
+	{a:255,r:255,g:197,b:20},
+	{a:255,r:255,g:255,b:30},
+	{a:255,r:145,g:245,b:35},
+	{a:255,r:20,g:235,b:40},
+	{a:255,r:15,g:130,b:138},
+	{a:255,r:10,g:24,b:235},
+	{a:255,r:26,g:30,b:160},
+	{a:255,r:46,g:43,b:95},
+	{a:255,r:100,g:30,b:150},
+	{a:255,r:139,g:20,b:255},
+	{a:255,r:255,g:255,b:255},
+	{a:255,r:255,g:255,b:255},
+];	
+const deadColoring=
+	[
+	{a:255,r:40,g:40,b:255},
+	{a:255,r:10,g:34,b:250},
+	{a:255,r:0,g:20,b:245},
+	{a:255,r:0,g:10,b:240},
+	{a:255,r:0,g:0,b:235},
+	{a:255,r:0,g:0,b:130},
+	{a:255,r:0,g:0,b:125},
+	{a:255,r:0,g:0,b:120},
+	{a:255,r:10,g:0,b:115},
+	{a:255,r:20,g:0,b:110},
+	{a:255,r:30,g:0,b:105},
+	{a:255,r:40,g:0,b:100},
+	{a:255,r:50,g:0,b:95},
+	{a:255,r:60,g:0,b:90},
+	{a:255,r:80,g:0,b:85},
+	{a:255,r:90,g:0,b:80},
+	{a:255,r:100,g:40,b:75},
+	{a:255,r:110,g:24,b:70},
+	{a:255,r:120,g:0,b:65},
+	{a:255,r:110,g:0,b:60},
+	{a:255,r:100,g:0,b:55},
+	{a:255,r:90,g:0,b:50},
+	{a:255,r:80,g:0,b:45},
+	{a:255,r:70,g:0,b:40},
+	{a:255,r:60,g:0,b:35},
+	{a:255,r:50,g:0,b:30},
+	{a:255,r:40,g:0,b:25},
+	{a:255,r:30,g:0,b:20},
+	{a:255,r:20,g:0,b:15},
+	{a:255,r:10,g:0,b:10},
+	{a:255,r:0,g:0,b:5},
+	{a:255,r:0,g:0,b:0},
+	{a:255,r:0,g:0,b:0},
+
+];
+function checkBit(what, bitPos) 
+	{
+  	return (what & (1 << bitPos)) === 0 ? 0 : 1;
+}
+function getNextColor(binary, cellIndex)
+	{
+	let iteration = getIter(binary);
+	let coloring = rainBowColoring[iteration];		
+	if(!checkBit(binary,state))
+		{
+		coloring = deadColoring[iteration]; 
+	}
+
+	return coloring;
+
+}
+function setColor(colorObject)
+	{
+	return (colorObject.a<<24)|(colorObject.b<<16)|(colorObject.g<<8)|colorObject.r;
+}
+function extract5Bits(what, start)
+	{
+	return (what >> start) & 31;
+}
+
+
+function iterate(what)
+	{
+	console.log(what.toString(2));	
+	let colorIter= getIter(what);	
+	if(colorIter<31)
+		{
+		colorIter++;	
+		what = setIter(what, colorIter);
+	}	
+
+	console.log(what.toString(2));
+	return what;
+}
+
+function setIter(what, itter)
+	{
+	return (what&~itterationMask)|(itter<<itteration1);
+}
+function getIter(what)
+	{
+	return extract5Bits(what,itteration1);
+	}
+
+let testNum =0;
+let textColor = 0;
+function test_setColor(loopCount)
+	{
+	let tableResult = [];	
+	for(let i =0;i<loopCount;i++)
+		{
+
+		tableResult.push([testNum,textColor ,loopCount]);
+		testNum = iterate(testNum).toString(2);
+		textColor = getNextColor(testNum);
+		textColor= setColor(getNextColor(testNum));
+
+	}
+	console.table(tableResult);
+	
+}
+
+
+
+</script>
+</html>

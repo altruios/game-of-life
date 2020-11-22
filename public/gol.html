@@ -1,0 +1,72 @@
+<html>
+<body id="root">
+
+</body>
+<script>
+const root=document.getElementById('root');
+const canvas = document.createElement('canvas');
+const ctx = canvas.getContext('2d');
+const height = 1080;
+const width=1920;
+canvas.height=height;
+canvas.width=width;
+/*
+//some constants
+// we are going to have 8 bits, or 64 bits to work with at a time
+//1 life- bool
+//2 nextState-bool//a saveState for the next itteration, so life can be refferenced,  
+//3-8 stateCounter- 6-bit. == 64
+//9-15-neighbors array = clockwise.
+//16-31- internalState? //the sum of each state change counter at change, rolls over to zero;
+//32-64- 8bit image //we can just map to a clamped array, and push to the canvas;
+*/
+const BOARD = new sharedArrayBuffer(height*width*8);
+
+const cellView = BigUint64Array(BOARD);
+console.log(cellView);
+
+
+
+
+
+
+const savePath = "/images";
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</script>
+
+</html>

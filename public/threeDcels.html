@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<style>
+			body { margin: 0; }
+               #patternSelect{
+                    display:grid;
+                    grid-template-areas: 
+                    "i1 i2 i3"
+                    "s1 o1 s2";
+                    border:outset;
+                    border-width: 10px;
+               }
+               #patternSelect>div{
+                    display:contents;
+               }
+		</style>
+
+	</head>
+	<body id="root">
+          
+          <input id="input" type="number" value="0"> </input>
+          <button id="Btn">set rule
+               </button>
+               <button id="UP">UP</button>
+               <button id="DOWN">DOWN</button>
+               <slider id="selector" min="0" max="255"> rule selector</slider>
+               <button id="save">save imagees</button>
+               <button id="patternSelect">select pattern</button>
+               <div id="pattern">
+                    <div id="i1"><button id="bi1" value="0">X</button></div>
+                    <div id="i2"><button id="bi2" value="0">X</button></div>
+                    <div id="i3"><button id="bi3" value="0">X</button></div>
+                    <div id="s1"></div>
+                    <div id="o1"><button id="bo1" value="0">X</button></div>
+                    <div id="s2"></div>
+               </div>
+               <canvas id="canvas" height="1080px" width="1920px">
+		</canvas>
+		<script src="BooleanNetwork.js"></script>
+		<script>
+		const ROOT = document.getElementById('root');
+          const canvas = document.getElementById('canvas');
+          const ruleInput=document.getElementById('input');
+          const btn = document.getElementById('Btn');
+          const buttonUP = document.getElementById('UP');
+          const buttonDOWN = document.getElementById('DOWN');
+          const sliderSELECT = document.getElementById('selector');
+          const buttonSAVE = document.getElementById('save');
+          const buttonPATTERNSELECT = document.getElementById('patternSelect');
+          const divPATTERN = document.getElementById('pattern');
+          const buttonIN1 = document.getElementById('bi1');
+          const buttonIN2 = document.getElementById('bi2');
+          const buttonIN3 = document.getElementById('bi3');
+          const buttonOUT1 = document.getElementById('bo1');
+
+
+
+          buttonSAVE.addEventListener("click",function(){
+               BOOLEANNETWORK.toggleSave();
+          });
+          buttonIN1.addEventListener("click",function(){});
+          buttonIN2.addEventListener("click",function(){});
+          buttonIN3.addEventListener("click",function(){});
+          buttonOUT1.addEventListener("click",function(){});
+          buttonUP.addEventListener("click",function(){
+               
+          });
+          buttonDOWN.addEventListener("click",function(){});
+
+
+          btn.addEventListener("click",function(){
+               BOOLEANNETWORK.rule(ruleInput.value); 
+         })
+
+
+		canvas.height=1080;
+		canvas.width=1920;
+		console.log(canvas);
+		const ctx = canvas.getContext("2d");
+		const DISPLAY = document.createElement('div');
+		console.log(canvas);
+		const PATTERN = [canvas.width-1,0,1];
+		const BOOLEANNETWORK = new BooleanNetwork(1080,1920,PATTERN,DISPLAY,ctx);
+		const infoDiv = document.createElement('div');
+		infoDiv.style.position="absolute";
+		infoDiv.style.top="10px";
+		infoDiv.style.right="10px";
+		ROOT.appendChild(infoDiv);
+		ROOT.appendChild(DISPLAY);
+		console.log(BOOLEANNETWORK);
+          console.log("starting render");
+          BOOLEANNETWORK.setAsMiddle(Math.floor(canvas.width/2));
+
+          BOOLEANNETWORK.rule(30,"from start");
+          const renderer = BOOLEANNETWORK.renderer(infoDiv,60);
+
+
+
+
+
+
+
+		</script>
+</body>
+</html>

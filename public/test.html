@@ -1,0 +1,718 @@
+<html>
+<canvas id="canvas" class="canvas"></canvas>
+<div id="messageDiv">hello tester</div>
+<script>
+const canvas = document.querySelector('canvas');
+const ctx = canvas.getContext('2d');
+const savePath = "/images";
+
+const ctxBufferArray = []; // array of pictures
+const messageDiv = document.getElementById('messageDiv');
+	messageDiv.style.border = "solid";
+	messageDiv.setAttribute("fontSize", "18px");
+	messageDiv.setAttribute("height" , "40px;");
+	messageDiv.innerHTML = "TEST";
+
+const videoResolutions = [{name: "test", height: 1900, width:1500},{name:"1080", height: 1080, width:1920},{name:"4k", height: 2160, width:3840}];
+canvas.height = videoResolutions[1].height;
+canvas.width =  videoResolutions[1].width;
+const offScreenCanvas = new OffscreenCanvas(canvas.height,canvas.width);
+
+const cellScale = 1;
+const cellCount=canvas.height*canvas.width;
+const span = canvas.width;
+const hSpan = canvas.height;
+const state = 0;
+const drawBool = 1; 
+const StateChangeBool= 2;
+const itteration1=3;
+const itteration2=4;
+const itteration3=5;
+const itteration4=6;
+const itteration5=7;
+
+const neighbors_top= 8;
+const neighbors_top_right=9;
+const neighbors_right=10;	
+const neighbors_bottom_right=11;
+const neighbors_bottom=12;
+const neighbors_bottom_left=13;
+const neighbors_left=14;
+const neighbors_top_left=15;
+const mirroredNeighborBitsFlags = 
+	[
+	neighbors_bottom,
+	neighbors_bottom_left,
+	neighbors_left,
+	neighbors_top_left,
+	neighbors_top,
+	neighbors_top_right,
+	neighbors_right,
+	neighbors_bottom_right
+];
+	const neighborsArray = 
+		[
+	 {name: "neighbors_top",value: neighbors_top},
+	 {name: "neighbors_top_right",value:neighbors_top_right},
+	 {name: "neighbors_right",value:neighbors_right},
+	 {name: "neighbors_bottom_right",value:neighbors_bottom_right},
+	 {name: "neighbors_bottom",value:neighbors_bottom},
+	 {name: "neighbors_bottom_left",value:neighbors_bottom_left},
+	 {name: "neighbors_left",value:neighbors_left},
+	 {name:"neighbors_top_left",value:neighbors_top_left}
+		]
+// create a SharedArrayBuffer with a size in bytes
+const bufferMemoryAllocation = cellCount*2; //double the size 2bytes--16bits--per memory slot
+const bitArray = new SharedArrayBuffer(bufferMemoryAllocation); // double the number of cells
+const pixelData = new SharedArrayBuffer(bufferMemoryAllocation*2);
+const pixelDataCanvas =  new Uint32Array(pixelData);
+const pixelTransViewer = new Uint8Array(pixelData);
+const mainGrid = new Uint16Array(bitArray);
+let testColorIt = 0;
+const data = new Uint8Array((pixelDataCanvas.length)*4);
+const photographerHome=[];
+//const offScreen = canvas.transferControlToOffscreen()
+ // create the view
+// produces Int32Array [0, 0, 0, 0]
+
+//200 bytes - i want to itterate every 10 bytes (span x 2)
+//200/10 ==
+let count = 0;
+const cellCountIndex = mainGrid.length-1;
+console.log("main grid and pixel length",mainGrid.length, pixelDataCanvas.length)
+
+ctx.fillStyle = "green";
+ctx.fillRect(0, 0, videoResolutions[0].width, videoResolutions[0].height);
+ctx.stroke();
+generateRandom();
+step();
+clearBoard();
+function extract4Bits(what, start)
+	{
+	//return ((1 << start )-1) & (what >> (length)-1);
+	return (what >> start) & 15;
+	//return ((what & ((1 << end) - 1) & ~(((1 << start) - 1))) >>> start);
+}
+
+
+function generateRandom()
+	{
+
+	//flags
+	//1= state
+	//2= drawBool
+	//4= StateChangeBool
+	//8= itteration1
+	//16= itteration2
+	//32= itteration3
+	//64= itteration4
+	//128= neighbors_top
+	//256= neighbors_top_right
+	//512= neighbors_right
+	//1024= neighbors_bottom_right
+	//2048= neighbors_bottom
+	//4096= neighbors_bottom_left
+	//8192= neighbors_left
+	//16384= neighbors_top_left
+	//32768= cellbinaryMaintain
+
+	for(let i=0; i < mainGrid.length; i++)	
+		{
+		let randomNum = Math.random(0,1);
+		if(randomNum>0.665)
+			{
+			mainGrid[i]=setBitToOne(mainGrid[i], state);
+		}	
+		else{
+			mainGrid[i]=setBitToZero(mainGrid[i], state);
+
+		}	
+		mainGrid[i]=setBitToOne(mainGrid[i],drawBool);
+		mainGrid[i]=setBitToOne(mainGrid[i],StateChangeBool);
+	//	mainGrid[i]=eraseIterator(mainGrid[i]);
+		let indexOfCell = i;	
+		let stateOfCell = checkBit(mainGrid[i],state);
+		updateNeighbors(indexOfCell, stateOfCell);
+		
+	}	
+	draw();		
+}
+
+//////////////
+
+const workerPool = [];
+const workerSlice = 20;
+
+function isAnyoneStillWorking(state)
+	{
+	let boolReturn = false;
+	workerPool.forEach((workerHome)=>
+		{
+		if(workerHome.state<state)
+			{
+			boolReturn = true;
+		}
+	});
+	return boolReturn;
+}
+function setUpWorkers(cellCount)
+	{
+	if(cellCount%workerSlice==0)
+		{
+		const workerSliceSize = cellCount/workerSlice;
+		for(let i=0; i<workerSlice;i++)
+			{
+			const worker = new Worker("testworker.js");
+			worker.addEventListener('message', workerFinished);
+			let message =
+				{
+				workerState:0, 
+				sab:bitArray, 
+				pixels:pixelData,
+				start:workerSliceSize*i, 
+				end:workerSliceSize*i+workerSliceSize-1, 
+				index:i,
+				span:span,
+				hSpan:hSpan
+			};
+			worker.postMessage(message);
+			workerPool.push({worker:worker, index:i, working:true, state:0, startIndex:message.start, endIndex:message.end});
+		}	
+	}
+}
+function workerFinished(e)
+	{
+	let callBack = function(){};
+	let foundCotainer = workerPool.find(workerContainer=>workerContainer.index === e.data.index);
+	foundCotainer.working = false;
+	foundCotainer.state++;
+	if(!isAnyoneStillWorking(foundCotainer.state))
+		{
+		switch(foundCotainer.state)
+			{
+			case 1:
+				console.log("callback is console.log DONE! with all woker set up;");
+					break;
+			case 2:
+
+				renderToBuffer(count);	
+				workersUpdateNeighbors();
+				if(ctxBufferArray.length>0)
+					{
+					renderToCanvas();
+
+				}
+					break;
+				
+			case 3:
+					workerPool.forEach(workerHome=>workerHome.state=1);
+					messageDiv.innerHTML = "steps"+count;
+					count++;
+					console.timeEnd(`step${count}`);
+					window.requestAnimationFrame(()=>{console.log("count",count);stepWorkers(count)});
+
+
+					break;
+			default: 
+				console.error("invalid/missing return state");
+				console.log("sad face",e);
+					break;
+		}	
+	}			
+}
+
+function stepWorkers(count)
+	{
+	console.time(`step${count}`);	
+
+	let message =
+		{
+		sab:bitArray, 
+		pixels:pixelData,
+		span:span,
+		hSpan:hSpan,
+		workerState:0,
+		start:0,
+		end:0,
+		index:0 
+	};	
+	workerPool.forEach((workerHome)=>
+		{
+
+		message.workerState = workerHome.state;
+		message.start=workerHome.startIndex; 
+		message.end=workerHome.endIndex; 
+		message.index=workerHome.index;
+		workerHome.worker.postMessage(message);
+		workerHome.working = true;
+	});
+}
+function workersUpdateNeighbors()
+	{
+	workerPool.forEach((workerHome)=>	
+		{
+		let message =
+				{
+				workerState:workerHome.state, 
+				sab:bitArray, 
+				pixels:pixelData,
+				start:workerHome.startIndex, 
+				end:workerHome.endIndex, 
+				index:workerHome.index,
+				span:span,
+				hSpan:hSpan
+			};
+		workerHome.worker.postMessage(message);
+		workerHome.working = true;
+	});
+}
+function renderToBuffer(count)
+	{
+	
+	const img = renderImage();	
+	
+	ctxBufferArray.push(img);
+}
+function renderToCanvas()
+	{
+	if(renderNextBufferedImage())
+		{
+		window.requestAnimationFrame(renderToCanvas);	
+	}
+	else
+		{
+		return 
+	}
+}
+
+//dom user input and ui elements
+function saveImage(count,image) 
+	{
+	let sendObject = 
+		{
+		imageData: image,
+		filePath:savePath,
+		count:count
+	}	
+  var xmlHttpReq = false;
+
+  if (window.XMLHttpRequest) 
+  	{
+    ajax = new XMLHttpRequest();
+  }
+  else if (window.ActiveXObject) 
+  	{
+    ajax = new ActiveXObject("Microsoft.XMLHTTP");
+  }
+
+  ajax.open("POST", "saveimage.php", false);
+  ajax.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+  ajax.onreadystatechange = function() 	
+  	{
+  }
+  let save = false;
+  ajax.send("imageBitmap="+sendObject.imageData+"&count="+sendObject.count+"&filePath="+sendObject.filePath);
+
+
+  	return true;
+}
+function renderNextBufferedImage()
+	{
+	if(ctxBufferArray.length==0 ||ctxBufferArray[0]==undefined)
+		{
+		return false;
+	}
+	ctx.putImageData(ctxBufferArray[0],0,0);
+	saveImage(count, canvas.toDataURL('image/png'));
+	ctxBufferArray.shift();
+	return true;
+}
+
+function renderImage()
+	{
+	const tA = new Uint8ClampedArray(data.buffer);
+	for(let i=0;i<tA.length;i++)
+		{
+		tA[i]=pixelTransViewer[i];	
+	}
+	const img = new ImageData(tA, span);
+	return img;
+}
+
+
+
+
+function step()
+	{
+
+	for(let i=0; i<mainGrid.length;i++)
+		{
+		let lastState = checkBit(mainGrid[i],state); // records the state
+		let newState = GameOfLifeBinary(lastState, countNeighbors(mainGrid[i]));
+
+		if(newState === lastState)
+			{
+
+			mainGrid[i] = setBitToZero(mainGrid[i], drawBool);
+		}
+		else
+			{
+
+			mainGrid[i] = setBitState(mainGrid[i],state,newState); //toggle change
+
+		//	mainGrid[i] = eraseIterator(mainGrid[i]);
+
+			mainGrid[i] = setBitToOne(mainGrid[i],StateChangeBool); // set change happened to true
+			mainGrid[i] = setBitToOne(mainGrid[i], drawBool);
+
+		}
+
+	}
+	for(let i=0; i<mainGrid.length;i++)
+		{
+		let stateOfCell = checkBit(mainGrid[i], state);
+		updateNeighbors(i, stateOfCell);
+	}
+
+	draw();	
+
+}
+function clearBoard()
+	{
+	ctx.fillStyle = "green";
+	ctx.fillRect(0,0,canvas.width,canvas.height);
+	draw();
+}
+
+function draw()
+	{
+	//for each row
+
+//  const imgData =mainGrid.map(x=>x&1?255:0);
+// const Image = new ImageData(imgData, canvas.width,canvas.height);
+console.time("timeTest");
+	for(let i=0; i< mainGrid.length/span; i++)
+		{
+
+		for(let j=0;j< span;j++)
+			{
+			drawCell(j,i, 0);			
+		}	
+	}
+	
+console.timeEnd("timeTest");
+}
+function drawCell(xPos,yPos, colorOverRide)
+	{
+	let realIndex = (yPos*span)+xPos;	
+	if(!setBitToZero(mainGrid[realIndex], drawBool)){return}
+
+	/*	if(!checkBit(mainGrid[realIndex],drawBool))
+		{
+		//console.log("not set to draw", dec2bin(mainGrid[realIndex]));	
+		return;
+	}	*/
+	ctx.fillStyle  = "black";
+	if(checkBit(mainGrid[realIndex],state))
+		{
+		ctx.fillStyle  = "white";
+	}	
+	let posX = xPos*cellScale; 
+	let posY = yPos*cellScale;
+	if(colorOverRide != 0)
+		{
+		ctx.fillStyle = colorOverRide;
+
+	
+
+	}
+
+	ctx.fillRect(posX, posY, cellScale, cellScale);
+	ctx.stroke();
+
+}
+function drawNeighbors(cellIndex)
+	{
+	let neighbors = getNeighbors(cellIndex);
+	let thisPos = getXY(cellIndex);
+	drawCell(thisPos.x,thisPos.y, "black");
+	neighbors.forEach((n)=>
+		{
+
+		let pos = getXY(n);
+			
+
+		drawCell(pos.x, pos.y, "purple");
+
+	});
+}
+function getXY(cellIndex)
+			{
+			return {x:(cellIndex%span),y:(Math.floor(cellIndex/span))};
+		}
+//////////////
+function countLiveCells()
+	{	
+	let count =0;	
+	mainGrid.forEach((cell)=>{
+		count+=checkBit(cell,state)
+	});
+	return count;
+}
+
+function getMask(bitPos)
+	{
+	let mask = 1 << bitPos;
+	return mask; 
+}
+function countNeighbors(cellBinary)
+	{
+	let count=0;	
+	neighborsArray.forEach(n=>count+=checkBit(cellBinary,n.value));
+	return count;
+}
+function checkNeighbors(cellIndex)
+	{
+	let messageTable = [];
+	let item = mainGrid[cellIndex];
+	let topmes = "this cell "+ item+" at "+cellIndex+" is "+dec2bin(item);	
+	messageTable.push(topmes);
+	neighborsArray.forEach((neighbor)=> 
+		{
+		message= "flag: "+neighbor.name+","+neighbor.value+", set to:"+checkBit(item,neighbor.value);
+		messageTable.push(message);
+	});
+	console.table(messageTable);
+}
+
+function bLog(binary){
+	console.log(dec2bin(binary));
+}
+function dec2bin(dec)
+	{
+    return (dec >>> 0).toString(2);
+}
+
+function checkBit(what, bitPos) 
+	{
+  	return (what & (1 << bitPos)) === 0 ? 0 : 1;
+}
+function setBitToOne(what, bitPos) 
+	{
+  	return what | (1 << bitPos);
+}
+function setBitToZero(what, bitPos)
+	{
+ 	const mask = ~(1 << bitPos);
+  	return what & mask;
+}
+
+
+function GameOfLifeBinary(state, neighborCount)
+	{
+	let rState = 1;	
+	if((neighborCount >3 || neighborCount < 2) && state == 1 )
+		{
+		rState = 0;
+	}	
+	else if(state == 0 && neighborCount == 3)
+		{
+		rState = 1;
+	}
+	else if(state == 0)
+		{
+		rState = 0;
+	}
+	//	console.log("properties are,",state, neighborCount,"game return state is", rState);
+	return rState;
+}
+/*function iterate(what)
+	{
+	if( checkBit(what,itteration1)  ==0 ||
+		checkBit(what,itteration2)  ==0 ||
+		checkBit(what,itteration3)  ==0 ||
+		checkBit(what,itteration4)  ==0)	
+		{
+		what+=256;
+	}
+	else
+		{
+		what=-1;	
+		}
+	return what;
+}
+*/
+function eraseIterator(what)
+	{
+	what=setBitToZero(what, itteration1);
+	what=setBitToZero(what, itteration2);
+	what=setBitToZero(what, itteration3);
+	what=setBitToZero(what, itteration4);
+
+
+
+	return what;
+}
+function updateNeighbors(cellIndex, stateOfCell)
+	{	
+	let neighbors = getNeighbors(cellIndex);
+	let mirroredFlags = mirroredNeighborBitsFlags[Symbol.iterator](); // offset by 4.
+	//so when we modify the bit on the neighbor - we toggle the switch of the neighbor this cell is to neighbor...
+	// we adjust the bottom neighbor bit of the top neighbor
+	// we adjust the right neighbor bit of the left neighbor... etc
+
+	neighbors.forEach(neighbor=> mainGrid[neighbor]=setBitState(mainGrid[neighbor], mirroredFlags.next().value, stateOfCell)); 
+}
+function getNeighborIfromXY(cellIndex,x,y)
+	{
+	//	first we handle the x axis
+	if(span%cellIndex ==0) //if x is negative or parent cell divides evenly into span
+		{
+		x+=span; // add a row,
+	}
+	else if((span-1)%cellIndex == 0) // if you are at the left edge.
+		{
+		x-=span;
+	}	
+
+	//then the y axis
+	if(y==-1) //too far up
+		{
+		y+=hSpan; //set to max y
+		}
+		
+	else if(y>hSpan-1) // if you are too low
+		{
+		y-=hSpan; //set to first level = 0
+	}
+	let index = y*span + x;
+	return index;
+}
+
+
+function getNeighbors(cellIndex)
+	{
+	let currentPos = getXY(cellIndex);
+
+	//round like a clock starting at top (center top neighbor)
+	let neighbors = [
+		getNeighborIfromXY(cellIndex,currentPos.x,currentPos.y-1),
+		getNeighborIfromXY(cellIndex,currentPos.x+1,currentPos.y-1),
+		getNeighborIfromXY(cellIndex,currentPos.x+1,currentPos.y),
+		getNeighborIfromXY(cellIndex,currentPos.x+1,currentPos.y+1),
+		getNeighborIfromXY(cellIndex,currentPos.x,currentPos.y+1),
+		getNeighborIfromXY(cellIndex,currentPos.x-1,currentPos.y+1),
+		getNeighborIfromXY(cellIndex,currentPos.x-1,currentPos.y),
+		getNeighborIfromXY(cellIndex,currentPos.x-1,currentPos.y-1),
+	];
+	return neighbors;
+
+}
+function setBitState(cellBinary, targetBit , updateData)
+	{
+	if(updateData == 1)	
+		{
+		cellBinary=setBitToOne(cellBinary, targetBit);
+	}
+	else
+		{
+		cellBinary=setBitToZero(cellBinary, targetBit);
+	}
+	return cellBinary;
+}	
+
+function SetAllNeighbors(bit)
+	{
+	if(bit){	
+	for(let k=0;k<cellCount; k++)
+		{
+		mainGrid[k]=setBitToOne(mainGrid[k],neighbors_top);
+		mainGrid[k]=setBitToOne(mainGrid[k],neighbors_top_right);
+		mainGrid[k]=setBitToOne(mainGrid[k],neighbors_right);
+		mainGrid[k]=setBitToOne(mainGrid[k],neighbors_bottom_right);
+		mainGrid[k]=setBitToOne(mainGrid[k],neighbors_bottom);
+		mainGrid[k]=setBitToOne(mainGrid[k],neighbors_bottom_left);
+		mainGrid[k]=setBitToOne(mainGrid[k],neighbors_left);
+		mainGrid[k]=setBitToOne(mainGrid[k],neighbors_top_left);
+
+		}
+
+	}else
+	{
+		for(let k=0;k<cellCount; k++)
+		{
+		mainGrid[k]=setBitToZero(mainGrid[k],neighbors_top);
+		mainGrid[k]=setBitToZero(mainGrid[k],neighbors_top_right);
+		mainGrid[k]=setBitToZero(mainGrid[k],neighbors_right);
+		mainGrid[k]=setBitToZero(mainGrid[k],neighbors_bottom_right);
+		mainGrid[k]=setBitToZero(mainGrid[k],neighbors_bottom);
+		mainGrid[k]=setBitToZero(mainGrid[k],neighbors_bottom_left);
+		mainGrid[k]=setBitToZero(mainGrid[k],neighbors_left);
+		mainGrid[k]=setBitToZero(mainGrid[k],neighbors_top_left);
+
+		}
+
+	}
+}
+
+function setAlive(cellIndex)
+	{
+	let pos = getXY(cellIndex);	
+	mainGrid[cellIndex] = setBitToOne(mainGrid[cellIndex], state);
+	mainGrid[cellIndex] = setBitToOne(mainGrid[cellIndex], drawBool);
+	mainGrid[cellIndex] = setBitToOne(mainGrid[cellIndex], StateChangeBool);
+	draw(pos.x,pos.y);
+	updateNeighbors(cellIndex, 1);	
+
+}
+let mainGridIndex = [];
+index=0;
+mainGrid.forEach((item)=>
+	{
+	mainGridIndex.push(index);
+	index++;
+});
+let mainGridIt = mainGridIndex[Symbol.iterator]();
+
+
+
+
+
+
+//turn on to check if things are correct;
+setUpWorkers(cellCount);
+stepWorkers(0);
+//window.addEventListener("click",stepWorkers);
+
+/*let stepper = window.setInterval(function()
+	{
+	let i = mainGridIt.next().value;
+	if(i!=undefined)
+		{
+		step();
+	}
+	else{
+		console.log("done");
+		window.clearInterval(stepper);
+	}
+},1); 
+*/
+
+
+/*
+
+
+let neighborCheck = window.setInterval(function()
+	{
+	let t = mainGridIt.next().value;
+	if(t!=undefined)
+		{
+		drawNeighbors(t);
+	}
+	else{
+		console.log("done");
+		window.clearInterval(neighborCheck);
+	}
+},1000); */
+
+</script>
