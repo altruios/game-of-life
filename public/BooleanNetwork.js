@@ -78,7 +78,7 @@ class BooleanNetwork{
           console.time(refTime);
         this.ctx.fillStyle="#ffffff";
         this.ctx.fillRect(0,0,this.trueWidth,this.trueHeight);
-        this.getScreen().then(screen=>this.draw(screen)).then(screen=>this.saveImageFlag?this.saveImage(screen, refTime):console.timeEnd(refTime));
+        this.getScreen().then(screen=>this.draw(screen)).then((screen)=>this.saveImageFlag?this.saveImage(refTime):console.timeEnd(refTime));
   //      this.saveImage(screen);
     }
      getScreen(){
@@ -97,7 +97,7 @@ class BooleanNetwork{
      toggleSave(){
           this.saveImageFlag=!this.saveImageFlag;
      }
-    saveImage(newImage,refTime){
+    saveImage(newImageLine,refTime){
 
           fetch("/saveimage.php",{
                method:"POST",
@@ -105,7 +105,7 @@ class BooleanNetwork{
                     "Content-Type": "application/json"
                  },
                body:JSON.stringify({
-                    imageData:newImage.canvas.toDataURL("image/png"),
+                    imageData:newImageLine,
                     filePath:"/images",
                     count:this.lineNum
                })
@@ -148,11 +148,9 @@ class BooleanNetwork{
         },speed)         
     }
     getLastState(){
-        return this.nodes.map(node=>node.lastState()?1:0).join("");
+        return this.nodes.map(node=>node.lastState());
     }
-    getSecondToLastState(){
-        return this.nodes.map(node=>node.secondLastState()?1:0).join("");
-    }
+
     
     update(){
            this.ruleNumber++;
@@ -217,67 +215,18 @@ class BooleanNode{
           //return life?0xFFFFFFFF:0xFF000000;
           let bitPos;
           if(life==1){
-          switch(rule){
-               case 0:
-                    bitPos=15;
-                    break;
-               case 1:
-                    bitPos=240;
-                    break;
-               case 2:
-                    bitPos=255;
-                    break;
-               case 3:
-                    bitPos=3840;
-                    break;
-               case 4:
-                    bitPos=3855;
-                    break;
-               case 5:
-                    bitPos=4080;
-                    break;
-               case 6:
-                    bitPos=4095;
-                    break;
-               case 7:
-                    bitPos=61440;
-                    break;
-               default:
-                    bitPos=983055
-               }
-               return Math.min(color+bitPos,0xFFFFFFFF);
+               this.middle?console.log("life?!", this.lifeState[this.lifeState.length-1]):null;
+               bitPos|=this.connectionIndex[0].lastState().life?0xFFeb61ff:0xFFd6353e;
+               bitPos|=this.connectionIndex[1].lastState().life?0xFF15f020:0xFF0F0F0F;
+               bitPos|=this.connectionIndex[2].lastState().life?0xFFd6353e:0xFFeb61ff;
+               return Math.min(color|bitPos,0xFFFFFFFF)|0xFF000000;
           }else{
-               switch(rule){
-                    case 0:
-                         bitPos=61455;
-                         break;
-                    case 1:
-                         bitPos=61680;
-                         break;
-                    case 2:
-                         bitPos=61695;
-                         break;
-                    case 3:
-                         bitPos=65280;
-                         break;
-                    case 4:
-                         bitPos=65295;
-                         break;
-                    case 5:
-                         bitPos=65520;
-                         break;
-                    case 6:
-                         bitPos=65535;
-                         break;
-                    case 7:
-                         bitPos=983040;
-                         break;
-                    default:
-                         bitPos=983280;
-                         break;
-                    }   
-                    return Math.max(color-bitPos,0xFF000000);
-
+               this.middle?console.log("life?!", this.lifeState[this.lifeState.length-1]):null;
+               let bitPos=0;
+               bitPos|=this.connectionIndex[0].lastState().life?0x0011611f:0x00116111;
+               bitPos|=this.connectionIndex[1].lastState().life?0x00151020:0x00116111;
+               bitPos|=this.connectionIndex[2].lastState().life?0x0011313e:0x00163531;
+               return Math.max(color&!bitPos,0xFF000000)|0xFF000000;
                }
         
 

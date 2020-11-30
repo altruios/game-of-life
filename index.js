@@ -3,19 +3,13 @@ var path = require('path');
 
 var bodyParser=require('body-parser');
 const fs = require('fs');
+const { isPrimitive } = require('util');
 
 var app = express()
 
 
 
 
-/*
-app.use(bodyParser.urlencoded({
-  extended: true
-}));
-
-app.use(bodyParser.json());
-*/
 app.use(bodyParser.json({limit: "50mb"}));
 app.use(bodyParser.urlencoded({limit: "50mb", extended: true, parameterLimit:50000}));
 
@@ -25,7 +19,7 @@ const PORT = 3000;
 // respond with "hello world" when a GET request is made to the homepage
 app.get("/",function(req,res){
 })
-  
+
 
 // POST method route
 app.post('/saveimage.php', function (req, res) {
@@ -46,3 +40,7 @@ app.post('/saveimage.php', function (req, res) {
   res.send(JSON.stringify({error:false,message:"test test"}));
 })
 app.listen(PORT, () => console.log(`Server listening on port: ${PORT}`));
+
+
+
+
